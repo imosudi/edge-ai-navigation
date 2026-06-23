@@ -26,6 +26,7 @@ let logLines        = 0;
 let lastLidarFpsTs  = 0;
 let lidarFrameCount = 0;
 let lastLidarData   = null;
+let lastTelemetryData = null;
 
 /* ─── DOM refs ───────────────────────────────────────────────── */
 const $feed     = document.getElementById('camera-feed');
@@ -111,36 +112,9 @@ function setConnStatus(up) {
 }
 
 /* ─── Camera WebSocket ───────────────────────────────────────── */
-makeWS('/ws/camera', null, (buf) => {
-  const blob = new Blob([buf], { type: 'image/jpeg' });
-  const url  = URL.createObjectURL(blob);
-  $feed.src  = url;
-  if (prevBlobUrl) URL.revokeObjectURL(prevBlobUrl);
-  prevBlobUrl = url;
-}, 'Camera');
-
-/* ─── LiDAR WebSocket ────────────────────────────────────────── */
+/* ─── Camera & LiDAR WebSockets (moved to initWebSockets) ─── */
 const lidarCanvas = document.getElementById('lidar-canvas');
 lidarCtx = lidarCanvas.getContext('2d');
-
-makeWS('/ws/lidar', (data) => {
-  lastLidarData = data;
-  renderLidar(data);
-  const count = (data.angles_deg || []).length;
-  document.getElementById('lidar-points').textContent = `pts: ${count}`;
-  const minD = data.min_distance_m != null ? data.min_distance_m.toFixed(2) + ' m' : '--';
-  document.getElementById('lidar-min-dist').textContent = `min: ${minD}`;
-
-  // Local FPS calculation
-  const now = performance.now();
-  lidarFrameCount++;
-  if (now - lastLidarFpsTs >= 1000) {
-    document.getElementById('fps-lidar').textContent =
-      `${lidarFrameCount} fps`;
-    lidarFrameCount = 0;
-    lastLidarFpsTs = now;
-  }
-}, null, 'LiDAR');
 
 function renderLidar(data) {
   const W = lidarCanvas.width, H = lidarCanvas.height;
@@ -152,7 +126,7 @@ function renderLidar(data) {
   const ctx = lidarCtx;
   ctx.clearRect(0, 0, W, H);
 
-  const isLight = document.body.classList.contains('light-theme');
+  const isLight = !document.body.classList.contains('dark-theme');
 
   // Background
   ctx.fillStyle = isLight ? '#eaedf2' : '#0a0c10';
@@ -234,23 +208,8 @@ function renderLidar(data) {
   ctx.fillText(`scan #${data.scan_count || 0}`, 6, H - 6);
 }
 
-/* ─── Fusion WebSocket ───────────────────────────────────────── */
+/* ─── Fusion WebSocket (moved to initWebSockets) ─── */
 let infFpsCount = 0, lastInfFpsTs = performance.now();
-
-makeWS('/ws/fusion', (data) => {
-  const objects = data.objects || [];
-  document.getElementById('obj-count').textContent =
-    `${objects.length} object${objects.length !== 1 ? 's' : ''}`;
-  renderObjects(objects);
-
-  // Log new HIGH threats
-  objects.filter(o => o.threat_level === 'HIGH').forEach(o => {
-    addLog(
-      `⚠ HIGH THREAT: ${o.class_name} at ${(o.distance_m || 0).toFixed(2)}m (${o.direction})`,
-      'log-threat-HIGH'
-    );
-  });
-}, null, 'Fusion');
 
 function renderObjects(objects) {
   const rows = objects.map(o => {
@@ -269,8 +228,7 @@ function renderObjects(objects) {
   $tbody.innerHTML = rows;
 }
 
-/* ─── Telemetry WebSocket ────────────────────────────────────── */
-makeWS('/ws/telemetry', (data) => {
+function updateTelemetry(data) {
   // Gauge arcs
   updateGauge('g-cpu',  data.cpu?.percent ?? 0,          100, '#00e5ff');
   updateGauge('g-mem',  data.memory?.percent ?? 0,        100, '#7c4dff');
@@ -334,7 +292,9 @@ makeWS('/ws/telemetry', (data) => {
   } else {
     document.getElementById('val-inf-lat').textContent = '--';
   }
-}, null, 'Telemetry');
+}
+
+/* ─── Telemetry WebSocket (moved to initWebSockets) ─── */
 
 /* ─── Gauge arc renderer ─────────────────────────────────────── */
 const _gaugeCtxCache = {};
@@ -363,7 +323,7 @@ function updateGauge(wrapperId, value, max, colourOrFn) {
 
   ctx.clearRect(0, 0, GAUGE_SIZE, GAUGE_SIZE);
 
-  const isLight = document.body.classList.contains('light-theme');
+  const isLight = !document.body.classList.contains('dark-theme');
 
   // Track
   ctx.beginPath();
@@ -405,22 +365,105 @@ if ($themeToggle) {
   // Check persisted preference or system preference
   const savedTheme = localStorage.getItem('theme');
   const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const useDark = savedTheme === 'dark' || (!savedTheme && systemPrefersDark);
 
-  if (savedTheme === 'light' || (!savedTheme && !systemPrefersDark)) {
-    document.body.classList.add('light-theme');
-    $themeToggle.innerHTML = MOON_SVG;
-  } else {
+  if (useDark) {
+    document.body.classList.add('dark-theme');
     $themeToggle.innerHTML = SUN_SVG;
+  } else {
+    document.body.classList.remove('dark-theme');
+    $themeToggle.innerHTML = MOON_SVG;
   }
 
   $themeToggle.addEventListener('click', () => {
-    const isLight = document.body.classList.toggle('light-theme');
-    localStorage.setItem('theme', isLight ? 'light' : 'dark');
-    $themeToggle.innerHTML = isLight ? MOON_SVG : SUN_SVG;
+    const isDark = document.body.classList.toggle('dark-theme');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    $themeToggle.innerHTML = isDark ? SUN_SVG : MOON_SVG;
 
     // Redraw LiDAR immediately if data is cached
     if (lastLidarData) {
       renderLidar(lastLidarData);
     }
+    // Redraw telemetry gauges immediately if telemetry is cached
+    if (lastTelemetryData) {
+      updateTelemetry(lastTelemetryData);
+    }
   });
 }
+
+// Fetch status on startup and initialize WebSockets
+let deviceStatus = { camera: true, lidar: true };
+
+function initWebSockets() {
+  /* ─── Camera WebSocket ───────────────────────────────────────── */
+  makeWS('/ws/camera', null, (buf) => {
+    const blob = new Blob([buf], { type: 'image/jpeg' });
+    const url  = URL.createObjectURL(blob);
+    $feed.src  = url;
+    if (prevBlobUrl) URL.revokeObjectURL(prevBlobUrl);
+    prevBlobUrl = url;
+  }, 'Camera');
+
+  /* ─── LiDAR WebSocket ────────────────────────────────────────── */
+  if (deviceStatus.lidar) {
+    makeWS('/ws/lidar', (data) => {
+      lastLidarData = data;
+      renderLidar(data);
+      const count = (data.angles_deg || []).length;
+      document.getElementById('lidar-points').textContent = `pts: ${count}`;
+      const minD = data.min_distance_m != null ? data.min_distance_m.toFixed(2) + ' m' : '--';
+      document.getElementById('lidar-min-dist').textContent = `min: ${minD}`;
+
+      // Local FPS calculation
+      const now = performance.now();
+      lidarFrameCount++;
+      if (now - lastLidarFpsTs >= 1000) {
+        document.getElementById('fps-lidar').textContent =
+          `${lidarFrameCount} fps`;
+        lidarFrameCount = 0;
+        lastLidarFpsTs = now;
+      }
+    }, null, 'LiDAR');
+  } else {
+    addLog('LiDAR hardware disconnected — stream suspended', 'log-warn');
+    document.getElementById('fps-lidar').textContent = 'offline';
+    document.getElementById('lidar-min-dist').textContent = 'min: --';
+    document.getElementById('lidar-points').textContent = 'pts: --';
+  }
+
+  /* ─── Fusion WebSocket ───────────────────────────────────────── */
+  makeWS('/ws/fusion', (data) => {
+    const objects = data.objects || [];
+    document.getElementById('obj-count').textContent =
+      `${objects.length} object${objects.length !== 1 ? 's' : ''}`;
+    renderObjects(objects);
+
+    // Log new HIGH threats
+    objects.filter(o => o.threat_level === 'HIGH').forEach(o => {
+      addLog(
+        `⚠ HIGH THREAT: ${o.class_name} at ${(o.distance_m || 0).toFixed(2)}m (${o.direction})`,
+        'log-threat-HIGH'
+      );
+    });
+  }, null, 'Fusion');
+
+  /* ─── Telemetry WebSocket ────────────────────────────────────── */
+  makeWS('/ws/telemetry', (data) => {
+    lastTelemetryData = data;
+    updateTelemetry(data);
+  }, null, 'Telemetry');
+}
+
+fetch('/api/v1/status')
+  .then(res => res.json())
+  .then(data => {
+    if (data.components) {
+      deviceStatus.camera = data.components.camera === 'ok';
+      deviceStatus.lidar = data.components.lidar === 'ok';
+    }
+    initWebSockets();
+  })
+  .catch(err => {
+    console.warn('Could not fetch status, defaulting to all available:', err);
+    initWebSockets();
+  });

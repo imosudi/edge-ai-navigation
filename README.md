@@ -11,53 +11,7 @@
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                        Raspberry Pi 5                                │
-│                                                                      │
-│  ┌─────────────┐  BGR frames  ┌──────────────────┐  Detections      │
-│  │ Camera Mod3 │─────────────▶│  YOLO Pipeline   │──────────┐       │
-│  │ 1280×720    │              │  (asyncio thread) │          │       │
-│  │ 30 fps      │              └────────┬─────────┘          │       │
-│  └─────────────┘                       │ Pre-processed       │       │
-│                                        ▼                     │       │
-│  ┌─────────────┐              ┌──────────────────┐           │       │
-│  │ Hailo HAT+  │◀─────────── │  HailoRT Engine  │           │       │
-│  │ Hailo-8L    │  HEF model  │  18–22 fps inf.  │           │       │
-│  │ PCIe Gen 3  │─────────────▶│  COCO-80 classes │           │       │
-│  └─────────────┘  Results    └──────────────────┘           │       │
-│                                                              │       │
-│  ┌─────────────┐  SCIP 2.0   ┌──────────────────┐           │       │
-│  │ Hokuyo URG  │────────────▶│  Scan Processor  │  Sector   │       │
-│  │ URG-04LX    │             │  Polar map / OAM │  range ───┼──┐    │
-│  │ 240° 10 Hz  │             └──────────────────┘  map      │  │    │
-│  └─────────────┘                                             │  │    │
-│                                                              ▼  ▼    │
-│                                              ┌───────────────────┐   │
-│                                              │   Sensor Fusion   │   │
-│                                              │  IoU tracker      │   │
-│                                              │  bearing→distance │   │
-│                                              │  threat classify  │   │
-│                                              └────────┬──────────┘   │
-│                                                       │              │
-│  ┌────────────────────────────────────────────────────▼───────────┐  │
-│  │                    FastAPI + WebSocket Server                  │  │
-│  │   /api/v1/ws/camera     → JPEG binary stream                  │  │
-│  │   /api/v1/ws/lidar      → polar scan JSON                     │  │
-│  │   /api/v1/ws/fusion     → fused objects JSON                  │  │
-│  │   /api/v1/ws/telemetry  → system metrics JSON                 │  │
-│  │   /api/v1/*             → REST endpoints                      │  │
-│  └────────────────────────────────────────────────────────────────┘  │
-└──────────────────────────────────────────────────────────────────────┘
-                                    │ HTTP / WebSocket
-                                    ▼
-                    ┌───────────────────────────────┐
-                    │     Browser Dashboard          │
-                    │  Live camera + LiDAR canvas   │
-                    │  Fused object table + gauges  │
-                    │  Real-time telemetry metrics  │
-                    └───────────────────────────────┘
-```
+![System Architecture](docs/images/architecture.svg)
 
 ---
 

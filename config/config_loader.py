@@ -19,7 +19,12 @@ from pathlib import Path
 from typing import Literal
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field, field_validator
+
+# Load environment variables from .env file at the workspace root
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_env_path)
 
 logger = logging.getLogger(__name__)
 
@@ -185,6 +190,7 @@ def load_config(path: Path | None = None) -> AppConfig:
 def _apply_env_overrides(cfg: AppConfig) -> None:
     """Mutate config in-place based on environment variables."""
     env_map = {
+        "DASHBOARD_PORT":             ("api",       "port",               int),
         "EDGE_AI_API_PORT":           ("api",       "port",               int),
         "EDGE_AI_API_KEY":            ("api",       "api_key",            str),
         "EDGE_AI_CAMERA_FPS":         ("camera",    "fps",                int),
@@ -195,6 +201,7 @@ def _apply_env_overrides(cfg: AppConfig) -> None:
         "EDGE_AI_CONFIDENCE":         ("inference", "confidence_threshold", float),
         "EDGE_AI_LOG_LEVEL":          ("logging",   "level",              str),
         "EDGE_AI_TELEMETRY_INTERVAL": ("telemetry", "interval_seconds",   float),
+        "EDGE_AI_MQTT_PASSWORD":      ("telemetry", "mqtt_password",      str),
     }
 
     for env_key, (section, field, cast) in env_map.items():

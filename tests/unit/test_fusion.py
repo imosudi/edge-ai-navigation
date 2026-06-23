@@ -243,6 +243,22 @@ class TestConfigLoader:
         cfg = load_config(path=pathlib.Path("/nonexistent_path.yaml"))
         assert cfg.api.port == 9999
 
+    def test_dashboard_port_override(self, monkeypatch):
+        monkeypatch.setenv("DASHBOARD_PORT", "8888")
+        import pathlib
+
+        from config.config_loader import load_config
+        cfg = load_config(path=pathlib.Path("/nonexistent_path.yaml"))
+        assert cfg.api.port == 8888
+
+    def test_mqtt_password_override(self, monkeypatch):
+        monkeypatch.setenv("EDGE_AI_MQTT_PASSWORD", "secret_pass")
+        import pathlib
+
+        from config.config_loader import load_config
+        cfg = load_config(path=pathlib.Path("/nonexistent_path.yaml"))
+        assert cfg.telemetry.mqtt_password == "secret_pass"
+
 
 class TestRateLimiter:
     """Tests for app/middleware/rate_limit.py"""

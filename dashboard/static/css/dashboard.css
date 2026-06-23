@@ -5,31 +5,6 @@
 
 /* ── Design tokens ────────────────────────────────────────────── */
 :root {
-  --bg:          #0d0f14;
-  --surface:     #151820;
-  --surface2:    #1c2030;
-  --border:      #252b3a;
-  --accent:      #00e5ff;
-  --accent2:     #7c4dff;
-  --green:       #00e676;
-  --yellow:      #ffea00;
-  --red:         #ff1744;
-  --orange:      #ff6d00;
-  --text:        #e0e6f0;
-  --text-dim:    #6b7a99;
-  --font:        'Segoe UI', system-ui, sans-serif;
-  --mono:        'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-  --radius:      8px;
-  --header-h:    52px;
-
-  /* Theme-specific helpers */
-  --border-trans: rgba(255, 255, 255, 0.04);
-  --hover-bg:     rgba(255, 255, 255, 0.03);
-  --btn-bg:       rgba(255, 255, 255, 0.06);
-  --btn-hover:    rgba(255, 255, 255, 0.12);
-}
-
-body.light-theme {
   --bg:          #f4f6f9;
   --surface:     #ffffff;
   --surface2:    #eaedf2;
@@ -42,12 +17,37 @@ body.light-theme {
   --yellow:      #b58100;
   --red:         #b71c1c;
   --orange:      #e65100;
+  --font:        'Segoe UI', system-ui, sans-serif;
+  --mono:        'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --radius:      8px;
+  --header-h:    52px;
 
   /* Theme-specific helpers */
   --border-trans: rgba(0, 0, 0, 0.06);
   --hover-bg:     rgba(0, 0, 0, 0.02);
   --btn-bg:       rgba(0, 0, 0, 0.05);
   --btn-hover:    rgba(0, 0, 0, 0.10);
+}
+
+body.dark-theme {
+  --bg:          #0d0f14;
+  --surface:     #151820;
+  --surface2:    #1c2030;
+  --border:      #252b3a;
+  --text:        #e0e6f0;
+  --text-dim:    #6b7a99;
+  --accent:      #00e5ff;
+  --accent2:     #7c4dff;
+  --green:       #00e676;
+  --yellow:      #ffea00;
+  --red:         #ff1744;
+  --orange:      #ff6d00;
+
+  /* Theme-specific helpers */
+  --border-trans: rgba(255, 255, 255, 0.04);
+  --hover-bg:     rgba(255, 255, 255, 0.03);
+  --btn-bg:       rgba(255, 255, 255, 0.06);
+  --btn-hover:    rgba(255, 255, 255, 0.12);
 }
 
 /* ── Reset & base ─────────────────────────────────────────────── */
