@@ -12,13 +12,33 @@ This guide describes how to compile PyTorch/ONNX YOLO models into the **Hailo Ex
 1. **System Requirements**: Ubuntu 22.04/24.04 LTS (recommended) x86_64 machine, or Raspberry Pi 5 (ARM64) for runtime/local configurations.
 2. **HailoRT & PCIe Drivers**: Install the matching HailoRT version (matching the target Pi package, e.g., v4.18+).
 3. **Python Virtual Environment & Dependencies**:
-   Install the project dependencies, which automatically pull in `hailo-model-zoo` from the official git repository:
+   Install the project dependencies. Since `hailo-model-zoo` depends on the proprietary `hailo-dataflow-compiler` (which is not hosted on PyPI), you have two options for installation:
+
+   #### Option A: Standard Installation (Recommended for Compilation)
+   If you intend to compile models, download the compiler wheel from Hailo first:
+   1. Register and download the Dataflow Compiler wheel (`hailo_dataflow_compiler-5.3.0-py3-none-any.whl` or similar) from the [Hailo Developer Zone](https://hailo.ai/developer-zone/).
+   2. Install the wheel in your virtual environment:
+      ```bash
+      python3 -m venv venv
+      source venv/bin/activate
+      pip install --upgrade pip wheel setuptools
+      pip install /path/to/hailo_dataflow_compiler-5.3.0-py3-none-any.whl
+      pip install -r requirements.txt
+      ```
+
+   #### Option B: Bypass Dependencies (For Workspace Setup / Offline Inspection)
+   If you want to install dependencies without checking for the proprietary compiler (e.g. on a Raspberry Pi or target system where you won't run compiles):
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    pip install --upgrade pip wheel setuptools
+   # Install model-zoo bypassing package dependency checks:
+   pip install git+https://github.com/hailo-ai/hailo_model_zoo.git --no-deps
+   # Install the remaining standard project dependencies:
    pip install -r requirements.txt
    ```
+   *Note: Using Option B will result in a runtime `ModuleNotFoundError` if you attempt to execute `hailomz compile` without the compiler wheel installed.*
+
 
 ---
 

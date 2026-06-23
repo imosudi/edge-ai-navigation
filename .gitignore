@@ -30,6 +30,7 @@ models/*.hef
 models/*.pt
 models/*.onnx
 datasets/
+*.whl
 
 # Coverage / test artifacts
 .coverage

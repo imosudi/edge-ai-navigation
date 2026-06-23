@@ -15,14 +15,29 @@ set -euo pipefail
 MODEL="${1:-yolov8n}"
 MODELS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/models"
 VENV="${MODELS_DIR}/../venv/bin/python"
+PIP="${MODELS_DIR}/../venv/bin/pip"
 
-[[ -f "${VENV}" ]] || VENV="python3"
+if [[ -f "${VENV}" ]]; then
+    PYTHON_CMD="${VENV}"
+    PIP_CMD="${PIP}"
+else
+    PYTHON_CMD="python3"
+    PIP_CMD="pip3"
+fi
+
+# Ensure hailo-model-zoo is installed
+if ! "${PYTHON_CMD}" -c "import hailo_model_zoo" 2>/dev/null; then
+    echo "=== hailo-model-zoo not found. Installing from git... ==="
+    "${PIP_CMD}" install git+https://github.com/hailo-ai/hailo_model_zoo.git
+else
+    echo "=== hailo-model-zoo is already installed. ==="
+fi
 
 mkdir -p "${MODELS_DIR}"
 cd "${MODELS_DIR}"
 
 echo "=== Downloading ${MODEL} (PyTorch weights) ==="
-"${VENV}" -c "
+"${PYTHON_CMD}" -c "
 from ultralytics import YOLO
 import shutil, pathlib
 
@@ -49,7 +64,7 @@ echo ""
 echo "  # Install Hailo Model Zoo (via requirements.txt or direct git install)"
 echo "  pip install git+https://github.com/hailo-ai/hailo_model_zoo.git"
 echo ""
-echo "  # Compile (takes 10–30 minutes)"
+echo "  # Compile (takes 10-30 minutes)"
 echo "  hailomz compile yolov8n \\"
 echo "      --ckpt models/${MODEL}.onnx \\"
 echo "      --hw-arch hailo8l \\"
