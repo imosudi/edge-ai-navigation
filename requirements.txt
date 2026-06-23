@@ -55,3 +55,7 @@ ruff>=0.4.0             # Linter
 mypy>=1.10.0
 types-PyYAML>=6.0.12
 types-psutil>=5.9.5
+
+# ── Hailo Model Zoo (for compilation/quantization) ────────────────────────────
+hailo-model-zoo @ git+https://github.com/hailo-ai/hailo_model_zoo.git
+

@@ -3,23 +3,21 @@
 This guide describes how to compile PyTorch/ONNX YOLO models into the **Hailo Executable Format (`.hef`)** required for hardware acceleration on the Raspberry Pi 5 + Hailo AI HAT+.
 
 > [!IMPORTANT]
-> The model compilation process is computationally heavy and requires a standard **x86_64 Linux host machine** with the Hailo Software Suite (or `hailo-model-zoo`) installed. It cannot be run directly on the Raspberry Pi 5.
+> The model compilation process is computationally heavy. While `hailo-model-zoo` is installed as part of the project dependencies (on both x86_64 and ARM64/Raspberry Pi 5), actual ONNX-to-HEF compilation requires the **Hailo Dataflow Compiler (DFC)**. Since DFC is proprietary and only compiled for x86_64 architectures, compilation runs on an x86_64 Linux host or inside a virtualized container environment.
 
 ---
 
-## 1. Prerequisites (on x86_64 Host)
+## 1. Prerequisites & Environment Setup
 
-1. **System Requirements**: Ubuntu 22.04 LTS (recommended) x86_64 machine.
+1. **System Requirements**: Ubuntu 22.04/24.04 LTS (recommended) x86_64 machine, or Raspberry Pi 5 (ARM64) for runtime/local configurations.
 2. **HailoRT & PCIe Drivers**: Install the matching HailoRT version (matching the target Pi package, e.g., v4.18+).
-3. **Python Virtual Environment**:
+3. **Python Virtual Environment & Dependencies**:
+   Install the project dependencies, which automatically pull in `hailo-model-zoo` from the official git repository:
    ```bash
-   python3 -m venv hailo-env
-   source hailo-env/bin/activate
-   pip install --upgrade pip
-   ```
-4. **Install Hailo Model Zoo**:
-   ```bash
-   pip install hailo-model-zoo
+   python3 -m venv venv
+   source venv/bin/activate
+   pip install --upgrade pip wheel setuptools
+   pip install -r requirements.txt
    ```
 
 ---
