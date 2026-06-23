@@ -84,7 +84,7 @@ class ScanProcessor:
                 consecutive_errors += 1
                 if consecutive_errors >= self._cfg.reconnect_threshold:
                     logger.warning(
-                        "LiDAR: %d consecutive errors — attempting reconnect.",
+                        "LiDAR: %d consecutive errors - attempting reconnect.",
                         consecutive_errors,
                     )
                     await self._attempt_reconnect()
@@ -164,9 +164,9 @@ class ScanProcessor:
         Identify clusters of nearby points and classify threat level.
 
         Threat classification:
-          HIGH   — distance < cfg.lidar.min_range_m * 5  (arbitrary: 0.3 m)
-          MEDIUM — distance < cfg.lidar.max_range_m / 3
-          LOW    — everything else within range
+          HIGH   - distance < cfg.lidar.min_range_m * 5  (arbitrary: 0.3 m)
+          MEDIUM - distance < cfg.lidar.max_range_m / 3
+          LOW    - everything else within range
         """
         zones: list[dict[str, Any]] = []
         if len(distances) == 0:

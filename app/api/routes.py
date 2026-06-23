@@ -3,20 +3,20 @@ app/api/routes.py
 REST API endpoints for the Edge AI Navigation System.
 
 Endpoints:
-  GET  /status          — system health & component status
-  GET  /detections      — latest object detections
-  GET  /lidar/scan      — latest LiDAR scan data
-  GET  /fusion/objects  — latest fused objects (camera + LiDAR)
-  GET  /telemetry       — current system telemetry snapshot
-  GET  /config          — current runtime configuration (read-only)
-  POST /config          — update runtime thresholds dynamically
-  POST /snapshot        — save annotated frame to disk
-  GET  /metrics         — Prometheus-compatible metrics endpoint
-  WS   /ws/camera       — WebSocket: JPEG camera stream
-  WS   /ws/lidar        — WebSocket: LiDAR scan JSON
-  WS   /ws/fusion       — WebSocket: fused object JSON
-  WS   /ws/telemetry    — WebSocket: telemetry JSON
-  GET  /               — serve dashboard HTML
+  GET  /status          - system health & component status
+  GET  /detections      - latest object detections
+  GET  /lidar/scan      - latest LiDAR scan data
+  GET  /fusion/objects  - latest fused objects (camera + LiDAR)
+  GET  /telemetry       - current system telemetry snapshot
+  GET  /config          - current runtime configuration (read-only)
+  POST /config          - update runtime thresholds dynamically
+  POST /snapshot        - save annotated frame to disk
+  GET  /metrics         - Prometheus-compatible metrics endpoint
+  WS   /ws/camera       - WebSocket: JPEG camera stream
+  WS   /ws/lidar        - WebSocket: LiDAR scan JSON
+  WS   /ws/fusion       - WebSocket: fused object JSON
+  WS   /ws/telemetry    - WebSocket: telemetry JSON
+  GET  /               - serve dashboard HTML
 """
 
 from __future__ import annotations

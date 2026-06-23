@@ -105,6 +105,11 @@ class SensorFusion:
         self._cfg     = cfg
         self._tracks: list[TrackedObject] = []
         self.latest_objects: list[dict[str, Any]] = []
+        self.latest_navigation: dict[str, Any] = {
+            "action": "MOVE_FORWARD",
+            "speed": 1.0,
+            "reason": "Path clear",
+        }
 
     async def run(
         self,
@@ -138,12 +143,19 @@ class SensorFusion:
 
                 fused = self._fuse(detections, sector_map, sector_angles)
                 self.latest_objects = [obj.to_dict() for obj in fused]
+                self.latest_navigation = self._generate_navigation_command(
+                    fused, sector_map, sector_angles
+                )
 
                 fps_fusion.tick()
 
                 if ws_manager.connection_count("fusion") > 0:
                     await ws_manager.broadcast_json(
-                        {"objects": self.latest_objects, "timestamp": time.time()},
+                        {
+                            "objects": self.latest_objects,
+                            "navigation": self.latest_navigation,
+                            "timestamp": time.time(),
+                        },
                         channel="fusion",
                     )
 
@@ -286,3 +298,121 @@ class SensorFusion:
         if distance_m <= self._cfg.warn_distance_m:
             return "MEDIUM"
         return "LOW"
+
+    def _generate_navigation_command(
+        self,
+        tracks: list[TrackedObject],
+        sector_map: dict[int, float],
+        sector_angles: list[float],
+    ) -> dict[str, Any]:
+        """
+        Evaluate physical threats and LiDAR sector clearances to recommend an autonomous steering command.
+        """
+        # Default action
+        action = "MOVE_FORWARD"
+        speed = 1.0
+        reason = "Path clear"
+
+        # Check for visual tracked objects (by priority of threat level)
+        high_threats = [t for t in tracks if t.threat_level == "HIGH"]
+        medium_threats = [t for t in tracks if t.threat_level == "MEDIUM"]
+
+        if high_threats:
+            # We have a high threat object! Let's prioritize by proximity
+            threat = min(high_threats, key=lambda t: t.distance_m if t.distance_m is not None else float("inf"))
+
+            if threat.direction == "centre":
+                # Obstacle is in front. Decide steering direction based on sector clearances
+                steer_dir = self._decide_steer_direction(sector_map, sector_angles)
+                if steer_dir == "stop":
+                    action = "STOP"
+                    speed = 0.0
+                    reason = f"HIGH threat {threat.class_name} in front; all exit paths blocked"
+                else:
+                    action = "STEER_LEFT" if steer_dir == "left" else "STEER_RIGHT"
+                    speed = 0.25
+                    reason = f"Avoid HIGH threat {threat.class_name} in front; steering {steer_dir}"
+            elif threat.direction == "left":
+                action = "STEER_RIGHT"
+                speed = 0.5
+                reason = f"HIGH threat {threat.class_name} detected on left"
+            else:  # right
+                action = "STEER_LEFT"
+                speed = 0.5
+                reason = f"HIGH threat {threat.class_name} detected on right"
+
+        elif medium_threats:
+            # Medium threat object. Moderate avoidance steering
+            threat = min(medium_threats, key=lambda t: t.distance_m if t.distance_m is not None else float("inf"))
+            if threat.direction == "centre":
+                steer_dir = self._decide_steer_direction(sector_map, sector_angles)
+                if steer_dir == "stop":
+                    action = "STOP"
+                    speed = 0.0
+                    reason = f"MEDIUM threat {threat.class_name} in front; all exit paths blocked"
+                else:
+                    action = "STEER_LEFT" if steer_dir == "left" else "STEER_RIGHT"
+                    speed = 0.5
+                    reason = f"Avoid MEDIUM threat {threat.class_name} in front; steering {steer_dir}"
+            elif threat.direction == "left":
+                action = "STEER_RIGHT"
+                speed = 0.75
+                reason = f"MEDIUM threat {threat.class_name} on left"
+            else:  # right
+                action = "STEER_LEFT"
+                speed = 0.75
+                reason = f"MEDIUM threat {threat.class_name} on right"
+
+        else:
+            # No visual threats, check LiDAR sectors directly for unclassified obstacles in path
+            # Look at front sectors (angles between -15 and 15 degrees)
+            front_dists: list[float] = []
+            for i, angle in enumerate(sector_angles):
+                if -15 <= angle <= 15 and i in sector_map:
+                    front_dists.append(sector_map[i])
+
+            if front_dists:
+                min_front_dist = min(front_dists)
+                if min_front_dist <= self._cfg.threat_distance_m:
+                    steer_dir = self._decide_steer_direction(sector_map, sector_angles)
+                    if steer_dir == "stop":
+                        action = "STOP"
+                        speed = 0.0
+                        reason = "LiDAR obstacle detected in front; all exit paths blocked"
+                    else:
+                        action = "STEER_LEFT" if steer_dir == "left" else "STEER_RIGHT"
+                        speed = 0.25
+                        reason = f"Avoid LiDAR obstacle in front; steering {steer_dir}"
+                elif min_front_dist <= self._cfg.warn_distance_m:
+                    steer_dir = self._decide_steer_direction(sector_map, sector_angles)
+                    if steer_dir == "stop":
+                        action = "STOP"
+                        speed = 0.0
+                        reason = "LiDAR obstacle approaching; all exit paths blocked"
+                    else:
+                        action = "STEER_LEFT" if steer_dir == "left" else "STEER_RIGHT"
+                        speed = 0.50
+                        reason = f"Avoid LiDAR obstacle approaching; steering {steer_dir}"
+
+        return {"action": action, "speed": round(speed, 2), "reason": reason}
+
+    def _decide_steer_direction(self, sector_map: dict[int, float], sector_angles: list[float]) -> str:
+        """
+        Evaluate left vs right sector distances to determine the best exit path.
+        """
+        if not sector_map or not sector_angles:
+            return "left"
+
+        # Left sectors: angles between -90 and -15 degrees
+        left_dists = [sector_map[i] for i, angle in enumerate(sector_angles) if -90 <= angle <= -15 and i in sector_map]
+        # Right sectors: angles between 15 and 90 degrees
+        right_dists = [sector_map[i] for i, angle in enumerate(sector_angles) if 15 <= angle <= 90 and i in sector_map]
+
+        avg_left = sum(left_dists) / len(left_dists) if left_dists else 0.0
+        avg_right = sum(right_dists) / len(right_dists) if right_dists else 0.0
+
+        min_clearance = self._cfg.threat_distance_m
+        if avg_left < min_clearance and avg_right < min_clearance:
+            return "stop"
+
+        return "left" if avg_left >= avg_right else "right"

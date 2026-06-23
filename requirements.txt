@@ -1,11 +1,11 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Edge AI Navigation System — Python Dependencies
+# Edge AI Navigation System - Python Dependencies
 # Python 3.11+ required
 #
 # Install:
 #   pip install -r requirements.txt
 #
-# Hailo SDK is installed separately — see docs/HAILO_SETUP.md
+# Hailo SDK is installed separately - see docs/HAILO_SETUP.md
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Web framework ─────────────────────────────────────────────────────────────
@@ -25,7 +25,7 @@ numpy>=1.26.0
 # ── YOLO (CPU fallback + model download) ─────────────────────────────────────
 ultralytics>=8.2.0
 
-# ── Camera (Raspberry Pi specific — installed via apt on Pi) ──────────────────
+# ── Camera (Raspberry Pi specific - installed via apt on Pi) ──────────────────
 # picamera2  # Installed via: sudo apt install python3-picamera2
 
 # ── LiDAR serial communication ────────────────────────────────────────────────

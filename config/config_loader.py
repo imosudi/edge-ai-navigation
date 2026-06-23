@@ -175,7 +175,7 @@ def load_config(path: Path | None = None) -> AppConfig:
         logger.info("Config loaded from %s", config_path)
     else:
         logger.warning(
-            "Config file %s not found — using defaults.", config_path
+            "Config file %s not found - using defaults.", config_path
         )
 
     # Build config from YAML data

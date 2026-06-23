@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.pi.yml — Raspberry Pi 5 hardware passthrough overlay
+# docker-compose.pi.yml - Raspberry Pi 5 hardware passthrough overlay
 #
 # Usage (on the Pi):
 #   docker compose -f docker-compose.yml -f docker-compose.pi.yml up --build
@@ -34,7 +34,7 @@ services:
     environment:
       EDGE_AI_INFERENCE_DEVICE: ${EDGE_AI_INFERENCE_DEVICE:-auto}
 
-    # ── Resource limits (Pi 5 — 8 GB variant) ────────────────────────────────
+    # ── Resource limits (Pi 5 - 8 GB variant) ────────────────────────────────
     deploy:
       resources:
         limits:

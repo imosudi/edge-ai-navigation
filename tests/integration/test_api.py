@@ -233,7 +233,7 @@ class TestConfigEndpoints:
     async def test_patch_invalid_confidence(self, client):
         r = await client.post(
             "/api/v1/config",
-            json={"confidence_threshold": 1.5}   # > 1.0 — invalid
+            json={"confidence_threshold": 1.5}   # > 1.0 - invalid
         )
         assert r.status_code == 422
 

@@ -1,5 +1,5 @@
 # Troubleshooting Guide
-# Edge AI Navigation System — docs/TROUBLESHOOTING.md
+# Edge AI Navigation System - docs/TROUBLESHOOTING.md
 
 ## Quick Diagnostics
 

@@ -3,10 +3,10 @@
  * Real-time dashboard client for Edge AI Navigation System.
  *
  * Manages four WebSocket channels:
- *   /api/v1/ws/camera    — JPEG binary frames → <img> update via Blob URL
- *   /api/v1/ws/lidar     — JSON scan data     → polar canvas render
- *   /api/v1/ws/fusion    — JSON fused objects → objects table update
- *   /api/v1/ws/telemetry — JSON system metrics → gauge + metric update
+ *   /api/v1/ws/camera    - JPEG binary frames → <img> update via Blob URL
+ *   /api/v1/ws/lidar     - JSON scan data     → polar canvas render
+ *   /api/v1/ws/fusion    - JSON fused objects → objects table update
+ *   /api/v1/ws/telemetry - JSON system metrics → gauge + metric update
  *
  * All WebSockets reconnect automatically on close/error with
  * exponential back-off (1s → 2s → 4s … max 30s).
@@ -27,6 +27,8 @@ let lastLidarFpsTs  = 0;
 let lidarFrameCount = 0;
 let lastLidarData   = null;
 let lastTelemetryData = null;
+let lastObjects     = [];
+const uniqueClasses = new Set();
 
 /* ─── DOM refs ───────────────────────────────────────────────── */
 const $feed     = document.getElementById('camera-feed');
@@ -83,7 +85,7 @@ function makeWS(path, onMsg, onBinMsg, label) {
       }
     };
     ws.onclose = () => {
-      addLog(`Disconnected: ${label} — retry in ${delay/1000}s`, 'log-warn');
+      addLog(`Disconnected: ${label} - retry in ${delay/1000}s`, 'log-warn');
       setConnStatus(false);
       setTimeout(connect, delay);
       delay = Math.min(delay * 2, 30000);
@@ -212,7 +214,14 @@ function renderLidar(data) {
 let infFpsCount = 0, lastInfFpsTs = performance.now();
 
 function renderObjects(objects) {
-  const rows = objects.map(o => {
+  const filterSelect = document.getElementById('class-filter');
+  const filterVal = filterSelect ? filterSelect.value : 'all';
+
+  const filtered = filterVal === 'all'
+    ? objects
+    : objects.filter(o => o.class_name === filterVal);
+
+  const rows = filtered.map(o => {
     const dist  = o.distance_m != null ? o.distance_m.toFixed(2) + ' m' : '--';
     const conf  = (o.confidence * 100).toFixed(0) + '%';
     const tcls  = `threat-${o.threat_level}`;
@@ -226,6 +235,76 @@ function renderObjects(objects) {
     </tr>`;
   }).join('');
   $tbody.innerHTML = rows;
+
+  const totalCount = objects.length;
+  const filteredCount = filtered.length;
+  const countBadge = document.getElementById('obj-count');
+  if (countBadge) {
+    if (filterVal === 'all') {
+      countBadge.textContent = `${totalCount} object${totalCount !== 1 ? 's' : ''}`;
+    } else {
+      countBadge.textContent = `${filteredCount}/${totalCount} object${totalCount !== 1 ? 's' : ''}`;
+    }
+  }
+}
+
+function updateClassFilter(objects) {
+  let changed = false;
+  objects.forEach(o => {
+    if (o.class_name && !uniqueClasses.has(o.class_name)) {
+      uniqueClasses.add(o.class_name);
+      changed = true;
+    }
+  });
+
+  if (changed) {
+    const filterSelect = document.getElementById('class-filter');
+    if (filterSelect) {
+      const selectedValue = filterSelect.value;
+      filterSelect.innerHTML = '<option value="all">All Classes</option>';
+      const sortedClasses = Array.from(uniqueClasses).sort();
+      sortedClasses.forEach(cls => {
+        const opt = document.createElement('option');
+        opt.value = cls;
+        opt.textContent = cls;
+        filterSelect.appendChild(opt);
+      });
+      if (uniqueClasses.has(selectedValue)) {
+        filterSelect.value = selectedValue;
+      } else {
+        filterSelect.value = 'all';
+      }
+    }
+  }
+}
+
+function updateNavigation(nav) {
+  const $navAction = document.getElementById('nav-action');
+  const $navSpeed = document.getElementById('nav-speed');
+  const $navReason = document.getElementById('nav-reason');
+
+  if (!$navAction || !$navSpeed || !$navReason) return;
+
+  const action = nav?.action || 'MOVE_FORWARD';
+  const speed = nav?.speed != null ? nav.speed : 1.0;
+  const reason = nav?.reason || 'Path clear';
+
+  $navAction.textContent = action;
+  $navSpeed.textContent = speed.toFixed(2);
+  $navReason.textContent = reason;
+
+  let color = 'var(--text-dim)';
+  if (action === 'MOVE_FORWARD' || action === 'FORWARD') {
+    color = 'var(--green)';
+  } else if (action === 'STEER_LEFT' || action === 'STEER_RIGHT') {
+    color = 'var(--orange)';
+  } else if (action === 'STOP') {
+    color = 'var(--red)';
+  }
+
+  $navAction.style.color = color;
+  $navAction.style.borderColor = `color-mix(in srgb, ${color} 35%, transparent)`;
+  $navAction.style.backgroundColor = `color-mix(in srgb, ${color} 8%, transparent)`;
 }
 
 function updateTelemetry(data) {
@@ -353,7 +432,7 @@ function formatUptime(seconds) {
 }
 
 /* ─── Initial log entry ──────────────────────────────────────── */
-addLog('Dashboard initialised — connecting to Edge AI Navigation System…', 'log-info');
+addLog('Dashboard initialised - connecting to Edge AI Navigation System…', 'log-info');
 
 /* ─── Theme toggle ───────────────────────────────────────────── */
 const SUN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>`;
@@ -391,6 +470,14 @@ if ($themeToggle) {
   });
 }
 
+// Bind change listener for dynamic class filtering
+const $classFilter = document.getElementById('class-filter');
+if ($classFilter) {
+  $classFilter.addEventListener('change', () => {
+    renderObjects(lastObjects);
+  });
+}
+
 // Fetch status on startup and initialize WebSockets
 let deviceStatus = { camera: true, lidar: true };
 
@@ -425,7 +512,7 @@ function initWebSockets() {
       }
     }, null, 'LiDAR');
   } else {
-    addLog('LiDAR hardware disconnected — stream suspended', 'log-warn');
+    addLog('LiDAR hardware disconnected - stream suspended', 'log-warn');
     document.getElementById('fps-lidar').textContent = 'offline';
     document.getElementById('lidar-min-dist').textContent = 'min: --';
     document.getElementById('lidar-points').textContent = 'pts: --';
@@ -434,9 +521,10 @@ function initWebSockets() {
   /* ─── Fusion WebSocket ───────────────────────────────────────── */
   makeWS('/ws/fusion', (data) => {
     const objects = data.objects || [];
-    document.getElementById('obj-count').textContent =
-      `${objects.length} object${objects.length !== 1 ? 's' : ''}`;
+    lastObjects = objects;
+    updateClassFilter(objects);
     renderObjects(objects);
+    updateNavigation(data.navigation);
 
     // Log new HIGH threats
     objects.filter(o => o.threat_level === 'HIGH').forEach(o => {

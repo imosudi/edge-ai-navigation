@@ -130,7 +130,7 @@ def _hungarian_match(
     threshold: float,
 ) -> tuple[list[tuple[int, int]], list[int], list[int]]:
     """
-    Greedy IoU matching (O(n²)) — sufficient for real-time edge use.
+    Greedy IoU matching (O(n²)) - sufficient for real-time edge use.
     Returns (matches, unmatched_tracks, unmatched_dets).
     """
     matched: list[tuple[int, int]] = []

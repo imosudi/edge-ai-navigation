@@ -1,5 +1,5 @@
 # Performance Optimisation Guide
-# Edge AI Navigation System — docs/PERFORMANCE.md
+# Edge AI Navigation System - docs/PERFORMANCE.md
 
 ## Baseline Performance Targets (Raspberry Pi 5 + Hailo-8L)
 
@@ -16,7 +16,7 @@
 
 ---
 
-## Layer 1 — Hardware Configuration
+## Layer 1 - Hardware Configuration
 
 ### PCIe Gen 3 (critical for Hailo throughput)
 
@@ -58,12 +58,12 @@ usbcore.usbfs_memory_mb=256
 
 ---
 
-## Layer 2 — Application Configuration
+## Layer 2 - Application Configuration
 
 ### Inference pipeline
 
 ```yaml
-# config/settings.yaml — high-performance profile
+# config/settings.yaml - high-performance profile
 inference:
   model_name: "yolov8n"          # Smallest/fastest model
   input_width: 640               # Native YOLO input
@@ -102,7 +102,7 @@ telemetry:
 
 ---
 
-## Layer 3 — OpenCV Optimisations
+## Layer 3 - OpenCV Optimisations
 
 ### Use NEON SIMD (enabled by default on ARM64)
 
@@ -137,12 +137,12 @@ buf = np.empty((1280 * 720 * 3,), dtype=np.uint8)
 If FPS drops below target, disable bounding box rendering:
 ```yaml
 inference:
-  draw_overlays: false  # Raw frames — zero annotation overhead
+  draw_overlays: false  # Raw frames - zero annotation overhead
 ```
 
 ---
 
-## Layer 4 — Async Pipeline Tuning
+## Layer 4 - Async Pipeline Tuning
 
 ### Frame drop policy
 
@@ -158,7 +158,7 @@ This prevents memory accumulation. The queue depth controls the trade-off:
 ### asyncio event loop
 
 The system uses a single uvicorn worker with one asyncio event loop.
-Keep all I/O operations async — never call blocking code on the event loop:
+Keep all I/O operations async - never call blocking code on the event loop:
 
 ```python
 # BAD: blocks event loop
@@ -177,7 +177,7 @@ Typical overhead per client: ~1–2 ms per JPEG frame broadcast at 1280×720×80
 
 ---
 
-## Layer 5 — System-Level Tuning
+## Layer 5 - System-Level Tuning
 
 ### Disable unnecessary services
 

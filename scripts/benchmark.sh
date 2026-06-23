@@ -9,7 +9,7 @@ DURATION="${1:-60}"
 API_BASE="http://localhost:8080/api/v1"
 
 echo "════════════════════════════════════════════════"
-echo "  Edge AI Navigation — Performance Benchmark"
+echo "  Edge AI Navigation - Performance Benchmark"
 echo "  Duration: ${DURATION}s"
 echo "════════════════════════════════════════════════"
 echo ""

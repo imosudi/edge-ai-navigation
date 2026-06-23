@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/check_hardware.sh
-# Quick hardware verification script — run before starting the service.
+# Quick hardware verification script - run before starting the service.
 # ─────────────────────────────────────────────────────────────────────────────
 
 set -euo pipefail
@@ -13,7 +13,7 @@ FAILURES=0
 
 echo ""
 echo "════════════════════════════════════════"
-echo "  Edge AI Navigation — Hardware Check"
+echo "  Edge AI Navigation - Hardware Check"
 echo "════════════════════════════════════════"
 echo ""
 
@@ -154,12 +154,12 @@ if [[ -f "${MODELS_DIR}/yolov8n.hef" ]]; then
     SIZE=$(du -h "${MODELS_DIR}/yolov8n.hef" | cut -f1)
     ok "yolov8n.hef found (${SIZE})"
 else
-    warn "yolov8n.hef not found — compile from ONNX (see docs/HAILO_SETUP.md)"
+    warn "yolov8n.hef not found - compile from ONNX (see docs/HAILO_SETUP.md)"
 fi
 
 if [[ -f "${MODELS_DIR}/yolov8n.pt" ]]; then
     SIZE=$(du -h "${MODELS_DIR}/yolov8n.pt" | cut -f1)
-    ok "yolov8n.pt found (${SIZE}) — CPU fallback available"
+    ok "yolov8n.pt found (${SIZE}) - CPU fallback available"
 else
     warn "yolov8n.pt not found (download: bash scripts/download_model.sh)"
 fi
@@ -172,9 +172,9 @@ if command -v vcgencmd &>/dev/null; then
     if (( $(echo "${TEMP} < 70" | bc -l) )); then
         ok "CPU temperature: ${TEMP}°C"
     elif (( $(echo "${TEMP} < 80" | bc -l) )); then
-        warn "CPU temperature: ${TEMP}°C (getting warm — check cooling)"
+        warn "CPU temperature: ${TEMP}°C (getting warm - check cooling)"
     else
-        fail "CPU temperature: ${TEMP}°C (TOO HOT — add cooling)"
+        fail "CPU temperature: ${TEMP}°C (TOO HOT - add cooling)"
     fi
 fi
 
@@ -192,7 +192,7 @@ if [[ ${FAILURES} -eq 0 ]]; then
     echo -e "${GREEN}All hardware checks passed!${NC}"
     echo "Run: sudo systemctl start edge-ai-navigation"
 else
-    echo -e "${RED}${FAILURES} check(s) failed — resolve before starting.${NC}"
+    echo -e "${RED}${FAILURES} check(s) failed - resolve before starting.${NC}"
     echo "See docs/TROUBLESHOOTING.md for fixes."
 fi
 echo "════════════════════════════════════════"

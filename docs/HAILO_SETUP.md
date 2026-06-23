@@ -1,5 +1,5 @@
 # Hailo SDK Installation Guide
-# Edge AI Navigation System — docs/HAILO_SETUP.md
+# Edge AI Navigation System - docs/HAILO_SETUP.md
 
 ## Overview
 
@@ -12,7 +12,7 @@ The Hailo-8L accelerator requires two software components:
 
 ---
 
-## Part 1 — Raspberry Pi 5: Runtime Installation
+## Part 1 - Raspberry Pi 5: Runtime Installation
 
 ### 1.1 Download HailoRT
 
@@ -20,8 +20,8 @@ Register at the Hailo Developer Zone:
 > https://hailo.ai/developer-zone/software-downloads/
 
 Download for **aarch64 / ARM64**:
-- `hailort_4.18.x_arm64.deb`  — PCIe driver + runtime
-- `hailort-4.18.x-cp311-cp311-linux_aarch64.whl`  — Python SDK
+- `hailort_4.18.x_arm64.deb`  - PCIe driver + runtime
+- `hailort-4.18.x-cp311-cp311-linux_aarch64.whl`  - Python SDK
 
 ### 1.2 Install PCIe driver and runtime
 
@@ -75,7 +75,7 @@ Reboot after editing.
 
 ---
 
-## Part 2 — x86 Host: Model Compilation
+## Part 2 - x86 Host: Model Compilation
 
 The `.hef` compilation process must run on an **x86 Linux machine** (not the Pi).
 
@@ -146,7 +146,7 @@ sudo systemctl restart edge-ai-navigation
 
 ---
 
-## Part 3 — Upgrading to YOLOv8s
+## Part 3 - Upgrading to YOLOv8s
 
 YOLOv8s offers higher accuracy at the cost of ~2× inference latency.
 

@@ -5,11 +5,11 @@ Hokuyo URG-04LX-UG-01 LiDAR driver.
 Protocol: SCIP 2.0 over USB-CDC (appears as /dev/ttyACM0)
 
 Commands used:
-  VV  — version / device info
-  PP  — sensor parameters
-  MD  — multi-echo distance data (active scan mode)
-  GD  — single scan acquisition
-  QT  — stop scanning
+  VV  - version / device info
+  PP  - sensor parameters
+  MD  - multi-echo distance data (active scan mode)
+  GD  - single scan acquisition
+  QT  - stop scanning
 
 Sensor specs (URG-04LX-UG-01):
   Range:          60 mm – 5,600 mm

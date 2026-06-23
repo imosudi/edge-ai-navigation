@@ -3,10 +3,10 @@ app/websocket/stream.py
 WebSocket connection manager with multi-channel broadcast support.
 
 Channels:
-  camera    — JPEG binary frames
-  lidar     — JSON scan data
-  fusion    — JSON fused objects
-  telemetry — JSON system metrics
+  camera    - JPEG binary frames
+  lidar     - JSON scan data
+  fusion    - JSON fused objects
+  telemetry - JSON system metrics
 
 Design:
   - Thread-safe using asyncio.Lock per channel
@@ -93,7 +93,7 @@ class WebSocketManager:
                     await ws.send_bytes(data)
                     live.append(ws)
                 except Exception:
-                    # Connection closed or broken — drop silently
+                    # Connection closed or broken - drop silently
                     pass
             self._connections[channel] = live
         self._broadcast_stats[channel] += 1

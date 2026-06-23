@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Dockerfile — Edge AI Navigation System
+# Dockerfile - Edge AI Navigation System
 # Base: python:3.11-slim-bookworm  (official multi-arch: amd64 + arm64)
 #
 # Build (Pi 5 native or any host):
@@ -30,10 +30,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ── Step 2: Raspberry Pi–specific packages (skip silently on x86) ───────────
 # libcamera0.2 and libraspberrypi-bin only exist in the Pi OS apt mirror.
 # On a standard Debian/Ubuntu host they are simply not available, which is
-# fine — picamera2 is injected via the host venv mount on the Pi anyway.
+# fine - picamera2 is injected via the host venv mount on the Pi anyway.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends libcamera0.2 libraspberrypi-bin \
-    || echo "[INFO] Pi-specific packages not available on this platform — skipping." \
+    || echo "[INFO] Pi-specific packages not available on this platform - skipping." \
     && rm -rf /var/lib/apt/lists/*
 
 # ── Non-root user ─────────────────────────────────────────────────────────────

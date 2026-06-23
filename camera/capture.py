@@ -70,7 +70,7 @@ class CameraCapture:
             from picamera2 import Picamera2  # type: ignore
         except ImportError:
             logger.warning(
-                "picamera2 not available — falling back to OpenCV VideoCapture."
+                "picamera2 not available - falling back to OpenCV VideoCapture."
             )
             await self._start_opencv_fallback()
             return
@@ -200,7 +200,7 @@ class CameraCapture:
         while self._running:
             ret, frame = self._cap.read()
             if not ret:
-                logger.warning("OpenCV frame read failed — retrying.")
+                logger.warning("OpenCV frame read failed - retrying.")
                 time.sleep(0.05)
                 continue
 

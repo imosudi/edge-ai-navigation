@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Edge AI Navigation System — Runtime Configuration
+# Edge AI Navigation System - Runtime Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 # All values here are overrideable via environment variables (EDGE_AI_*).
 # See config/config_loader.py for the full list of env var mappings.
@@ -12,7 +12,7 @@ api:
     - "*"
   rate_limit_rpm: 120
   require_api_key: false
-  # Set via env var EDGE_AI_API_KEY — do NOT commit real keys here
+  # Set via env var EDGE_AI_API_KEY - do NOT commit real keys here
   api_key: "changeme"
 
 camera:

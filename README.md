@@ -101,7 +101,7 @@ edge-ai-navigation/
 
 ## Quick Start
 
-### Option A — Direct Install (recommended for production)
+### Option A - Direct Install (recommended for production)
 
 ```bash
 # 1. Clone on the Raspberry Pi
@@ -126,7 +126,7 @@ sudo systemctl start edge-ai-navigation
 # http://<pi-ip>:8080
 ```
 
-### Option B — Docker (development / testing)
+### Option B - Docker (development / testing)
 
 ```bash
 # Build
@@ -139,7 +139,7 @@ docker-compose up -d
 docker-compose logs -f edge-ai-nav
 ```
 
-### Option C — Development Mode (with CPU fallback)
+### Option C - Development Mode (with CPU fallback)
 
 ```bash
 # Create venv
@@ -344,7 +344,7 @@ EDGE_AI_INFERENCE_DEVICE=hailo
 1. **Enable API key authentication** for remote access
 2. **Firewall**: Restrict port 8080 to LAN only (`ufw allow from 192.168.0.0/24 to any port 8080`)
 3. **HTTPS**: Use nginx reverse proxy with Let's Encrypt for remote access
-4. **Secrets**: Never commit `.env` — use environment variables
+4. **Secrets**: Never commit `.env` - use environment variables
 5. **Updates**: `sudo apt upgrade` monthly for security patches
 
 ---
@@ -370,7 +370,7 @@ GitHub: github.com/imosudi/edge-ai-navigation
 
 ## License
 
-MIT License — see [LICENSE](LICENSE) file.
+MIT License - see [LICENSE](LICENSE) file.
 
 ---
 

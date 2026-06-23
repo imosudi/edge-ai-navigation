@@ -104,7 +104,7 @@ class TestSensorFusion:
                  "confidence": 0.85}]
         self.fusion._fuse(dets, {}, [])
 
-        # Now stop detecting — run missed_max + 1 times
+        # Now stop detecting - run missed_max + 1 times
         for _ in range(_FusionCfg.tracker_max_missed + 2):
             self.fusion._fuse([], {}, [])
 
@@ -116,6 +116,42 @@ class TestSensorFusion:
         sector_map = {0: 3.0, 1: 1.2, 2: 4.0}
         dist = self.fusion._estimate_distance(0.0, sector_map, sector_angles)
         assert dist == pytest.approx(1.2, abs=0.01)
+
+    def test_navigation_command_default_clear(self):
+        """No threats/obstacles → FORWARD, speed 1.0."""
+        nav = self.fusion._generate_navigation_command([], {}, [])
+        assert nav["action"] == "MOVE_FORWARD"
+        assert nav["speed"] == 1.0
+        assert "Path clear" in nav["reason"]
+
+    def test_navigation_command_high_threat_centre(self):
+        """High threat in centre → Steer to avoid."""
+        from fusion.sensor_fusion import TrackedObject
+        det = {"class_name": "person", "bbox": [0.4, 0.1, 0.6, 0.9], "confidence": 0.85}
+        track = TrackedObject(det)
+        track.threat_level = "HIGH"
+        track.direction = "centre"
+        track.distance_m = 0.5
+
+        # Mock sector map where right is clearer than left
+        sector_angles = [-30.0, 30.0]
+        sector_map = {0: 0.5, 1: 3.0}
+
+        nav = self.fusion._generate_navigation_command([track], sector_map, sector_angles)
+        assert nav["action"] == "STEER_RIGHT"
+        assert nav["speed"] == 0.25
+        assert "Avoid" in nav["reason"]
+
+    def test_navigation_command_lidar_avoidance(self):
+        """LiDAR detects close obstacle in front → Steer to avoid."""
+        # LiDAR sector angles straight ahead
+        sector_angles = [-45.0, 0.0, 45.0]
+        # Obstacle in front (distance = 0.5m), left is blocked (0.2m), right is clear (4.0m)
+        sector_map = {0: 0.2, 1: 0.5, 2: 4.0}
+
+        nav = self.fusion._generate_navigation_command([], sector_map, sector_angles)
+        assert nav["action"] == "STEER_RIGHT"
+        assert nav["speed"] == 0.25
 
 
 class TestScanProcessor:
@@ -161,7 +197,7 @@ class TestScanProcessor:
 
 
 class TestHailoEngine:
-    """Tests for inference/hailo_engine.py — CPU path only."""
+    """Tests for inference/hailo_engine.py - CPU path only."""
 
     def test_coco_classes_length(self):
         from inference.hailo_engine import COCO_CLASSES
@@ -274,7 +310,7 @@ class TestRateLimiter:
         req.client.host = "127.0.0.1"
         req.url.path = "/api/v1/status"
 
-        # Under limit — should not rate-limit
+        # Under limit - should not rate-limit
         call_next = AsyncMock(return_value=MagicMock(status_code=200))
         result = await middleware.dispatch(req, call_next)
         assert result.status_code == 200

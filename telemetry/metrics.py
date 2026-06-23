@@ -295,7 +295,7 @@ class TelemetryCollector:
             logger.info("MQTT client configured: %s:%d", self._cfg.mqtt_broker, self._cfg.mqtt_port)
             return client
         except ImportError:
-            logger.warning("aiomqtt not installed — MQTT disabled.")
+            logger.warning("aiomqtt not installed - MQTT disabled.")
             return None
         except Exception as exc:
             logger.warning("MQTT setup failed: %s", exc)

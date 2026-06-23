@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# docker-compose.yml — Edge AI Navigation System (base, all hosts)
+# docker-compose.yml - Edge AI Navigation System (base, all hosts)
 #
 # Dev / x86 host:
 #   docker compose up --build

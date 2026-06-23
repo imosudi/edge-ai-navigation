@@ -3,7 +3,7 @@ app/middleware/rate_limit.py
 Sliding-window rate limiter middleware (per IP address).
 
 Limits REST API calls; WebSocket connections are excluded.
-Uses an in-memory store — suitable for single-process deployment.
+Uses an in-memory store - suitable for single-process deployment.
 """
 
 from __future__ import annotations

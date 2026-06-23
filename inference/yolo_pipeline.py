@@ -11,7 +11,7 @@ Flow:
   6. Store detections on camera object for REST API
 
 Optimisations:
-  - asyncio pipeline — no blocking calls on event loop
+  - asyncio pipeline - no blocking calls on event loop
   - JPEG encoding in executor thread
   - Per-class colour palette (consistent across frames)
   - FPS counter via telemetry.metrics.fps_inference

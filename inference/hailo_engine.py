@@ -115,7 +115,7 @@ class HailoInferenceEngine:
             except Exception as exc:
                 if device == "hailo":
                     raise RuntimeError(f"Hailo initialisation required but failed: {exc}") from exc
-                logger.warning("Hailo unavailable (%s) — falling back to CPU.", exc)
+                logger.warning("Hailo unavailable (%s) - falling back to CPU.", exc)
 
         await self._init_cpu()
 
@@ -297,7 +297,7 @@ class HailoInferenceEngine:
         detections: list[Detection] = []
 
         # The HEF compiled with hailo_model_zoo typically has output key
-        # matching the layer name — iterate to find detection outputs.
+        # matching the layer name - iterate to find detection outputs.
         for key, tensor in raw.items():
             if tensor.ndim < 2:
                 continue
@@ -361,7 +361,7 @@ class HailoInferenceEngine:
         self._use_hailo = False
         self._infer_fn  = self._cpu_infer_sync
         logger.warning(
-            "Using CPU inference — performance will be significantly lower than Hailo-8L."
+            "Using CPU inference - performance will be significantly lower than Hailo-8L."
         )
 
     def _cpu_infer_sync(self, frame_bgr: np.ndarray) -> list[Detection]:

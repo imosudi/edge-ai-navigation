@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Edge AI Navigation — Dashboard</title>
+  <title>Edge AI Navigation - Dashboard</title>
   <link rel="stylesheet" href="/static/css/dashboard.css" />
 </head>
 <body>
@@ -73,7 +73,12 @@
       <div class="sub-panel">
         <div class="panel-head">
           <span class="panel-title">Fused Objects</span>
-          <span class="panel-badge" id="obj-count">0 objects</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <select id="class-filter" style="background: var(--surface2); color: var(--text); border: 1px solid var(--border); border-radius: 4px; padding: 2px 6px; font-size: 11px; outline: none; cursor: pointer;">
+              <option value="all">All Classes</option>
+            </select>
+            <span class="panel-badge" id="obj-count">0 objects</span>
+          </div>
         </div>
         <div class="objects-table-wrap">
           <table class="objects-table">
@@ -85,6 +90,24 @@
             </thead>
             <tbody id="objects-tbody"></tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Navigation Decision -->
+      <div class="sub-panel" style="margin-top: 10px;">
+        <div class="panel-head">
+          <span class="panel-title">Navigation Command</span>
+          <span class="panel-badge" id="nav-action" style="font-weight: bold; padding: 2px 8px; border-radius: 4px; font-size: 11px; border: 1px solid var(--border);">MOVE_FORWARD</span>
+        </div>
+        <div style="padding: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <div style="display: flex; justify-content: space-between; font-size: 12px;">
+            <span style="color: var(--text-dim);">Recommended Speed:</span>
+            <span id="nav-speed" style="font-family: var(--mono); font-weight: bold;">1.00</span>
+          </div>
+          <div style="font-size: 12px; line-height: 1.4; display: flex; flex-direction: column; gap: 4px;">
+            <span style="color: var(--text-dim);">Reason:</span>
+            <span id="nav-reason" style="font-style: italic;">Path clear</span>
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-# pyproject.toml — build and tooling configuration
+# pyproject.toml - build and tooling configuration
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 testpaths = ["tests"]
