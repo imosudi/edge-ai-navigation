@@ -23,11 +23,10 @@ from __future__ import annotations
 
 import logging
 import time
-from pathlib import Path
 from typing import Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
@@ -72,15 +71,6 @@ def get_state(request: Request) -> Any:
 # ─────────────────────────────────────────────
 
 _start_time = time.monotonic()
-
-
-@router.get("/", response_class=HTMLResponse, include_in_schema=False)
-async def dashboard_root() -> FileResponse:
-    """Serve the main dashboard HTML page."""
-    index_path = Path("dashboard/templates/index.html")
-    if not index_path.exists():
-        raise HTTPException(status_code=404, detail="Dashboard not found.")
-    return FileResponse(index_path)
 
 
 @router.get("/status", response_model=StatusResponse, tags=["System"])

@@ -16,10 +16,12 @@ import logging
 import signal
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.api.routes import router as api_router
@@ -191,6 +193,14 @@ def create_application() -> FastAPI:
 
     # ── Routes ─────────────────────────────────────────────────────────────
     app.include_router(api_router, prefix="/api/v1")
+
+    @app.get("/", response_class=HTMLResponse, include_in_schema=False)
+    async def dashboard_root() -> FileResponse:
+        """Serve the main dashboard HTML page."""
+        index_path = Path("dashboard/templates/index.html")
+        if not index_path.exists():
+            raise HTTPException(status_code=404, detail="Dashboard not found.")
+        return FileResponse(index_path)
 
     # ── Static files (dashboard UI) ────────────────────────────────────────
     app.mount("/static", StaticFiles(directory="dashboard/static"), name="static")
