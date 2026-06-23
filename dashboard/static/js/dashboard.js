@@ -300,10 +300,16 @@ makeWS('/ws/telemetry', (data) => {
   const h = data.hailo;
   const engine = h?.device_type || 'cpu';
 
+  const engineLabel = {
+    'cpu': 'CPU Fallback',
+    'gpu': 'GPU Acceleration',
+    'npu': 'NPU (Hailo-8L)'
+  }[engine] || 'CPU Fallback';
+
   // Update header badge
   const $engineBadge = document.getElementById('val-engine-type');
   if ($engineBadge) {
-    $engineBadge.textContent = engine;
+    $engineBadge.textContent = engineLabel;
     if (engine === 'npu') {
       $engineBadge.style.color = '#00e5ff';
       $engineBadge.style.background = 'rgba(0,229,255,0.08)';
@@ -317,7 +323,7 @@ makeWS('/ws/telemetry', (data) => {
   }
 
   // Update telemetry row
-  document.getElementById('val-hailo').textContent = engine;
+  document.getElementById('val-hailo').textContent = engineLabel;
   if (h?.available || engine === 'npu') {
     document.getElementById('val-inf-lat').textContent =
       (h.last_latency_ms ?? '--') + ' ms';
