@@ -25,9 +25,10 @@ import logging
 import time
 from typing import Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
+from starlette.requests import HTTPConnection
 
 logger = logging.getLogger(__name__)
 
@@ -62,8 +63,8 @@ class SnapshotResponse(BaseModel):
 # Dependency: extract shared state from request
 # ─────────────────────────────────────────────
 
-def get_state(request: Request) -> Any:
-    return request.app.state
+def get_state(connection: HTTPConnection) -> Any:
+    return connection.app.state
 
 
 # ─────────────────────────────────────────────
@@ -87,8 +88,6 @@ async def get_status(state: Any = Depends(get_state)) -> StatusResponse:
         uptime_seconds=round(time.monotonic() - _start_time, 2),
         components=components,
     )
-
-
 @router.get("/detections", tags=["Vision"])
 async def get_detections(state: Any = Depends(get_state)) -> dict:
     """Return the most recent YOLO detection results."""

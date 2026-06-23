@@ -40,10 +40,11 @@ logger = logging.getLogger(__name__)
 # Pre-computed BGR colour palette (one colour per COCO class)
 _PALETTE: list[tuple[int, int, int]] = []
 for _i in range(len(COCO_CLASSES)):
-    _h = int(_i * 360 / len(COCO_CLASSES))
+    _h = int(_i * 180 / len(COCO_CLASSES))
     _hsv = np.array([[[_h, 220, 220]]], dtype=np.uint8)
     _bgr = cv2.cvtColor(_hsv, cv2.COLOR_HSV2BGR)[0][0]
     _PALETTE.append((int(_bgr[0]), int(_bgr[1]), int(_bgr[2])))
+
 
 
 class YOLOPipeline:
