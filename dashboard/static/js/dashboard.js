@@ -25,6 +25,7 @@ let prevBlobUrl     = null;
 let logLines        = 0;
 let lastLidarFpsTs  = 0;
 let lidarFrameCount = 0;
+let lastLidarData   = null;
 
 /* ─── DOM refs ───────────────────────────────────────────────── */
 const $feed     = document.getElementById('camera-feed');
@@ -123,6 +124,7 @@ const lidarCanvas = document.getElementById('lidar-canvas');
 lidarCtx = lidarCanvas.getContext('2d');
 
 makeWS('/ws/lidar', (data) => {
+  lastLidarData = data;
   renderLidar(data);
   const count = (data.angles_deg || []).length;
   document.getElementById('lidar-points').textContent = `pts: ${count}`;
@@ -150,29 +152,31 @@ function renderLidar(data) {
   const ctx = lidarCtx;
   ctx.clearRect(0, 0, W, H);
 
+  const isLight = document.body.classList.contains('light-theme');
+
   // Background
-  ctx.fillStyle = '#0a0c10';
+  ctx.fillStyle = isLight ? '#eaedf2' : '#0a0c10';
   ctx.fillRect(0, 0, W, H);
 
   // Grid rings
-  ctx.strokeStyle = '#1e2535';
+  ctx.strokeStyle = isLight ? '#ccd1db' : '#1e2535';
   ctx.lineWidth = 1;
   [1, 2, 3, 4, 5].forEach(r => {
     ctx.beginPath();
     ctx.arc(cx, cy, r * scale, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.fillStyle = '#2a3450';
+    ctx.fillStyle = isLight ? '#57606a' : '#2a3450';
     ctx.font = '9px monospace';
     ctx.fillText(`${r}m`, cx + r * scale + 2, cy);
   });
 
   // Crosshair
-  ctx.strokeStyle = '#1e2535';
+  ctx.strokeStyle = isLight ? '#ccd1db' : '#1e2535';
   ctx.beginPath(); ctx.moveTo(cx, 0); ctx.lineTo(cx, H); ctx.stroke();
   ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(W, cy); ctx.stroke();
 
   // FOV arc lines (−120° to +120°)
-  ctx.strokeStyle = '#2a3450';
+  ctx.strokeStyle = isLight ? '#9eb0c7' : '#2a3450';
   ctx.lineWidth = 1;
   [-120, 120].forEach(deg => {
     const rad = (deg - 90) * Math.PI / 180;
@@ -225,7 +229,7 @@ function renderLidar(data) {
   ctx.fill();
 
   // Scan count watermark
-  ctx.fillStyle = '#2a3450';
+  ctx.fillStyle = isLight ? '#57606a' : '#2a3450';
   ctx.font = '10px monospace';
   ctx.fillText(`scan #${data.scan_count || 0}`, 6, H - 6);
 }
@@ -359,10 +363,12 @@ function updateGauge(wrapperId, value, max, colourOrFn) {
 
   ctx.clearRect(0, 0, GAUGE_SIZE, GAUGE_SIZE);
 
+  const isLight = document.body.classList.contains('light-theme');
+
   // Track
   ctx.beginPath();
   ctx.arc(cx, cy, r, startAngle, startAngle + fullAngle);
-  ctx.strokeStyle = '#1e2535';
+  ctx.strokeStyle = isLight ? '#d0d7de' : '#1e2535';
   ctx.lineWidth   = 6;
   ctx.lineCap     = 'round';
   ctx.stroke();
@@ -388,3 +394,29 @@ function formatUptime(seconds) {
 
 /* ─── Initial log entry ──────────────────────────────────────── */
 addLog('Dashboard initialised — connecting to Edge AI Navigation System…', 'log-info');
+
+/* ─── Theme toggle ───────────────────────────────────────────── */
+const $themeToggle = document.getElementById('theme-toggle');
+if ($themeToggle) {
+  // Check persisted preference or system preference
+  const savedTheme = localStorage.getItem('theme');
+  const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+  if (savedTheme === 'light' || (!savedTheme && !systemPrefersDark)) {
+    document.body.classList.add('light-theme');
+    $themeToggle.textContent = '☾';
+  } else {
+    $themeToggle.textContent = '☼';
+  }
+
+  $themeToggle.addEventListener('click', () => {
+    const isLight = document.body.classList.toggle('light-theme');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    $themeToggle.textContent = isLight ? '☾' : '☼';
+
+    // Redraw LiDAR immediately if data is cached
+    if (lastLidarData) {
+      renderLidar(lastLidarData);
+    }
+  });
+}
