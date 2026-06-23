@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Edge AI Navigation — Dashboard</title>
+  <link rel="stylesheet" href="/static/css/dashboard.css" />
+</head>
+<body>
+  <!-- ═══════════════════════════════════════════════════════
+       HEADER
+  ═══════════════════════════════════════════════════════ -->
+  <header class="header">
+    <div class="header-brand">
+      <span class="brand-icon">⬡</span>
+      <span class="brand-name">Edge AI Navigation</span>
+      <span class="brand-tag">Hailo-8L · Hokuyo URG · RPi&nbsp;5</span>
+    </div>
+    <div class="header-status">
+      <span class="status-dot" id="conn-dot"></span>
+      <span id="conn-label">Connecting…</span>
+      <span class="header-clock" id="clock"></span>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════
+       MAIN GRID
+  ═══════════════════════════════════════════════════════ -->
+  <main class="grid">
+
+    <!-- ── Column 1: Camera + Detected objects ── -->
+    <section class="panel panel-camera" id="panel-camera">
+      <div class="panel-head">
+        <span class="panel-title">Camera Stream</span>
+        <span class="panel-badge" id="fps-inference">-- fps</span>
+      </div>
+      <div class="camera-wrap">
+        <img id="camera-feed" src="/static/img/placeholder.svg" alt="Camera stream" />
+        <div class="camera-overlay" id="camera-overlay"></div>
+      </div>
+    </section>
+
+    <!-- ── Column 2: LiDAR scan plot ── -->
+    <section class="panel panel-lidar" id="panel-lidar">
+      <div class="panel-head">
+        <span class="panel-title">LiDAR Scan</span>
+        <span class="panel-badge" id="fps-lidar">-- fps</span>
+      </div>
+      <canvas id="lidar-canvas" width="400" height="400"></canvas>
+      <div class="lidar-stats">
+        <span id="lidar-min-dist">min: --</span>
+        <span id="lidar-points">pts: --</span>
+      </div>
+    </section>
+
+    <!-- ── Column 3: Fused objects + telemetry ── -->
+    <section class="panel panel-right">
+
+      <!-- Fused objects table -->
+      <div class="sub-panel">
+        <div class="panel-head">
+          <span class="panel-title">Fused Objects</span>
+          <span class="panel-badge" id="obj-count">0 objects</span>
+        </div>
+        <div class="objects-table-wrap">
+          <table class="objects-table">
+            <thead>
+              <tr>
+                <th>ID</th><th>Class</th><th>Conf</th>
+                <th>Dist</th><th>Dir</th><th>Threat</th>
+              </tr>
+            </thead>
+            <tbody id="objects-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- System telemetry gauges -->
+      <div class="sub-panel">
+        <div class="panel-head"><span class="panel-title">System Telemetry</span></div>
+        <div class="gauge-grid">
+          <div class="gauge" id="g-cpu">
+            <canvas class="gauge-arc" data-label="CPU" data-max="100" data-unit="%"></canvas>
+            <div class="gauge-val" id="val-cpu">--</div>
+            <div class="gauge-lbl">CPU</div>
+          </div>
+          <div class="gauge" id="g-mem">
+            <canvas class="gauge-arc" data-label="RAM" data-max="100" data-unit="%"></canvas>
+            <div class="gauge-val" id="val-mem">--</div>
+            <div class="gauge-lbl">RAM</div>
+          </div>
+          <div class="gauge" id="g-temp">
+            <canvas class="gauge-arc" data-label="°C" data-max="85" data-unit="°C"></canvas>
+            <div class="gauge-val" id="val-temp">--</div>
+            <div class="gauge-lbl">Temp</div>
+          </div>
+          <div class="gauge" id="g-disk">
+            <canvas class="gauge-arc" data-label="Disk" data-max="100" data-unit="%"></canvas>
+            <div class="gauge-val" id="val-disk">--</div>
+            <div class="gauge-lbl">Disk</div>
+          </div>
+        </div>
+        <div class="metric-rows">
+          <div class="metric-row"><span>Uptime</span><span id="val-uptime">--</span></div>
+          <div class="metric-row"><span>Cam FPS</span><span id="val-fps-cam">--</span></div>
+          <div class="metric-row"><span>Fusion FPS</span><span id="val-fps-fusion">--</span></div>
+          <div class="metric-row"><span>Net ↓</span><span id="val-net-recv">--</span></div>
+          <div class="metric-row"><span>Net ↑</span><span id="val-net-sent">--</span></div>
+          <div class="metric-row"><span>Hailo</span><span id="val-hailo">--</span></div>
+          <div class="metric-row"><span>Inf. Lat.</span><span id="val-inf-lat">--</span></div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ── Full-width: Event log ── -->
+    <section class="panel panel-log">
+      <div class="panel-head">
+        <span class="panel-title">Event Log</span>
+        <button class="btn-clear" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-scroll" id="event-log"></div>
+    </section>
+
+  </main>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

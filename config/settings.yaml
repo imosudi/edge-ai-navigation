@@ -1,0 +1,80 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Edge AI Navigation System — Runtime Configuration
+# ─────────────────────────────────────────────────────────────────────────────
+# All values here are overrideable via environment variables (EDGE_AI_*).
+# See config/config_loader.py for the full list of env var mappings.
+# ─────────────────────────────────────────────────────────────────────────────
+
+api:
+  host: "0.0.0.0"
+  port: 8080
+  cors_origins:
+    - "*"
+  rate_limit_rpm: 120
+  require_api_key: false
+  # Set via env var EDGE_AI_API_KEY — do NOT commit real keys here
+  api_key: "changeme"
+
+camera:
+  device_index: 0
+  width: 1280
+  height: 720
+  fps: 30
+  jpeg_quality: 80
+  # Camera Module 3 diagonal FoV ≈ 75°, horizontal ≈ 66°
+  hfov_degrees: 66.0
+  snapshot_dir: "logs/snapshots"
+  auto_exposure: true
+  auto_white_balance: true
+
+inference:
+  model_name: "yolov8n"
+  model_path: "models/yolov8n.hef"
+  cpu_model_path: "models/yolov8n.pt"
+  confidence_threshold: 0.45
+  nms_threshold: 0.45
+  input_width: 640
+  input_height: 640
+  # Options: hailo | cpu | auto
+  device: "auto"
+  queue_maxsize: 4
+  # Empty list = detect all 80 COCO classes
+  target_classes: []
+  draw_overlays: true
+  overlay_thickness: 2
+
+lidar:
+  port: "/dev/ttyACM0"
+  baudrate: 115200
+  min_range_m: 0.06
+  max_range_m: 5.5
+  angle_min_deg: -120.0
+  angle_max_deg: 120.0
+  scan_frequency_hz: 10.0
+  reconnect_threshold: 5
+
+fusion:
+  camera_hfov_degrees: 66.0
+  threat_distance_m: 1.0
+  warn_distance_m: 2.0
+  fusion_sector_width_deg: 5.0
+  min_overlap_fraction: 0.3
+  tracker_iou_threshold: 0.3
+  tracker_max_missed: 10
+
+telemetry:
+  interval_seconds: 1.0
+  mqtt_enabled: false
+  mqtt_broker: "localhost"
+  mqtt_port: 1883
+  mqtt_topic_prefix: "edge-ai/nav"
+  mqtt_username: ""
+  # Set via env var EDGE_AI_MQTT_PASSWORD
+  mqtt_password: ""
+
+logging:
+  level: "INFO"
+  log_dir: "logs"
+  max_bytes: 10485760   # 10 MB
+  backup_count: 5
+  json_format: true

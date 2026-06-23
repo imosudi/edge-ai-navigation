@@ -1,0 +1,56 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environment
+venv/
+.venv/
+env/
+
+# Environment / secrets
+.env
+*.key
+*.pem
+*.crt
+
+# Logs
+logs/*.log
+logs/*.log.*
+logs/snapshots/
+
+# Models (large binary files)
+models/*.hef
+models/*.pt
+models/*.onnx
+datasets/
+
+# Coverage / test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+*.tar
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb

@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.yml — Edge AI Navigation System (base, all hosts)
+#
+# Dev / x86 host:
+#   docker compose up --build
+#
+# Raspberry Pi 5 (with hardware passthrough):
+#   docker compose -f docker-compose.yml -f docker-compose.pi.yml up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  edge-ai-nav:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: edge-ai-nav:latest
+    container_name: edge-ai-nav
+
+    volumes:
+      - ./config:/app/config:ro
+      - ./models:/app/models:ro
+      - ./logs:/app/logs:rw
+      - ./datasets:/app/datasets:ro
+
+    environment:
+      EDGE_AI_CONFIG: /app/config/settings.yaml
+      EDGE_AI_LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      EDGE_AI_API_KEY: ${EDGE_AI_API_KEY:-changeme}
+      EDGE_AI_INFERENCE_DEVICE: ${EDGE_AI_INFERENCE_DEVICE:-cpu}
+      EDGE_AI_MQTT_PASSWORD: ${MQTT_PASSWORD:-}
+      PYTHONUNBUFFERED: "1"
+
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
+
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "50m"
+        max-file: "5"
+
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8080/api/v1/status')"
+      interval: 30s
+      timeout: 10s
+      start_period: 25s
+      retries: 3

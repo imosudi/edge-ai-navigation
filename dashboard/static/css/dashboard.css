@@ -1,0 +1,177 @@
+/* dashboard/static/css/dashboard.css
+   Dark-theme real-time monitoring dashboard
+   Designed for 1280× and above; collapses gracefully on mobile.
+*/
+
+/* ── Design tokens ────────────────────────────────────────────── */
+:root {
+  --bg:          #0d0f14;
+  --surface:     #151820;
+  --surface2:    #1c2030;
+  --border:      #252b3a;
+  --accent:      #00e5ff;
+  --accent2:     #7c4dff;
+  --green:       #00e676;
+  --yellow:      #ffea00;
+  --red:         #ff1744;
+  --orange:      #ff6d00;
+  --text:        #e0e6f0;
+  --text-dim:    #6b7a99;
+  --font:        'Segoe UI', system-ui, sans-serif;
+  --mono:        'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+  --radius:      8px;
+  --header-h:    52px;
+}
+
+/* ── Reset & base ─────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text);
+             font-family: var(--font); font-size: 13px; overflow-x: hidden; }
+
+/* ── Header ───────────────────────────────────────────────────── */
+.header {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px; z-index: 100;
+}
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.brand-icon   { font-size: 22px; color: var(--accent); }
+.brand-name   { font-size: 15px; font-weight: 600; letter-spacing: .5px; }
+.brand-tag    { font-size: 11px; color: var(--text-dim);
+                background: var(--surface2); padding: 2px 8px; border-radius: 20px; }
+.header-status { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.status-dot   { width: 9px; height: 9px; border-radius: 50%; background: var(--text-dim);
+                transition: background .4s; }
+.status-dot.ok      { background: var(--green); box-shadow: 0 0 6px var(--green); }
+.status-dot.error   { background: var(--red);   box-shadow: 0 0 6px var(--red);   }
+.header-clock { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+
+/* ── Main grid ────────────────────────────────────────────────── */
+main.grid {
+  margin-top: var(--header-h);
+  display: grid;
+  grid-template-columns: 1fr 420px 320px;
+  grid-template-rows: auto auto;
+  gap: 12px;
+  padding: 12px;
+  min-height: calc(100vh - var(--header-h));
+}
+
+/* ── Panels ───────────────────────────────────────────────────── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.panel-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface2);
+  min-height: 34px;
+}
+.panel-title  { font-size: 11px; font-weight: 600; text-transform: uppercase;
+                letter-spacing: 1px; color: var(--text-dim); }
+.panel-badge  { font-size: 11px; font-family: var(--mono);
+                color: var(--accent); background: rgba(0,229,255,.08);
+                padding: 2px 8px; border-radius: 4px; }
+
+/* ── Camera panel ─────────────────────────────────────────────── */
+.panel-camera { grid-column: 1; grid-row: 1; }
+.camera-wrap  { position: relative; flex: 1; background: #000;
+                display: flex; align-items: center; justify-content: center; }
+#camera-feed  { width: 100%; height: 100%; object-fit: contain; display: block; }
+.camera-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+/* ── LiDAR panel ──────────────────────────────────────────────── */
+.panel-lidar  { grid-column: 2; grid-row: 1; align-items: center; padding-bottom: 8px; }
+#lidar-canvas { width: 100%; max-width: 400px; height: auto;
+                display: block; margin: 0 auto; }
+.lidar-stats  { display: flex; gap: 20px; justify-content: center;
+                font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+                padding: 4px 0; }
+
+/* ── Right column ─────────────────────────────────────────────── */
+.panel-right  { grid-column: 3; grid-row: 1;
+                display: flex; flex-direction: column; gap: 12px;
+                background: transparent; border: none; }
+.sub-panel    { background: var(--surface); border: 1px solid var(--border);
+                border-radius: var(--radius); overflow: hidden;
+                display: flex; flex-direction: column; }
+
+/* Objects table */
+.objects-table-wrap { overflow-y: auto; max-height: 200px; }
+.objects-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+.objects-table th {
+  position: sticky; top: 0; background: var(--surface2);
+  padding: 5px 8px; text-align: left;
+  font-size: 10px; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text-dim); border-bottom: 1px solid var(--border);
+}
+.objects-table td { padding: 5px 8px; border-bottom: 1px solid rgba(255,255,255,.04); }
+.objects-table tr:hover td { background: rgba(255,255,255,.03); }
+.threat-HIGH   { color: var(--red);    font-weight: 700; }
+.threat-MEDIUM { color: var(--orange); }
+.threat-LOW    { color: var(--green);  }
+.threat-UNKNOWN { color: var(--text-dim); }
+.threat-CLEAR  { color: var(--text-dim); }
+
+/* Gauge grid */
+.gauge-grid   { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+                gap: 8px; padding: 10px; }
+.gauge        { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gauge-arc    { width: 64px; height: 64px; }
+.gauge-val    { font-family: var(--mono); font-size: 13px; font-weight: 600;
+                color: var(--accent); }
+.gauge-lbl    { font-size: 10px; color: var(--text-dim); text-transform: uppercase; }
+
+/* Metric rows */
+.metric-rows  { padding: 4px 12px 10px; display: flex; flex-direction: column; gap: 4px; }
+.metric-row   { display: flex; justify-content: space-between; align-items: center;
+                font-size: 11px; padding: 3px 0;
+                border-bottom: 1px solid rgba(255,255,255,.04); }
+.metric-row span:last-child { font-family: var(--mono); color: var(--accent); }
+
+/* ── Log panel ────────────────────────────────────────────────── */
+.panel-log    { grid-column: 1 / -1; grid-row: 2; min-height: 130px; }
+.log-scroll   { flex: 1; overflow-y: auto; padding: 6px 12px;
+                font-family: var(--mono); font-size: 11px;
+                max-height: 130px; }
+.log-entry    { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,.03); }
+.log-ts       { color: var(--text-dim); margin-right: 8px; }
+.log-info     { color: var(--text); }
+.log-warn     { color: var(--yellow); }
+.log-error    { color: var(--red); }
+.log-threat-HIGH   { color: var(--red); font-weight: 700; }
+.log-threat-MEDIUM { color: var(--orange); }
+
+.btn-clear { font-size: 10px; padding: 2px 8px;
+             background: rgba(255,255,255,.06); border: 1px solid var(--border);
+             border-radius: 4px; color: var(--text-dim); cursor: pointer; }
+.btn-clear:hover { background: rgba(255,255,255,.12); }
+
+/* ── Scrollbar ────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 1100px) {
+  main.grid {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+  }
+  .panel-camera { grid-column: 1 / -1; }
+  .panel-lidar  { grid-column: 1; }
+  .panel-right  { grid-column: 2; }
+  .panel-log    { grid-column: 1 / -1; }
+}
+@media (max-width: 700px) {
+  main.grid { grid-template-columns: 1fr; }
+  .panel-lidar, .panel-right { grid-column: 1; }
+}

@@ -1,0 +1,44 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.pi.yml — Raspberry Pi 5 hardware passthrough overlay
+#
+# Usage (on the Pi):
+#   docker compose -f docker-compose.yml -f docker-compose.pi.yml up --build
+#
+# Or create an alias in ~/.bashrc:
+#   alias dc-pi='docker compose -f docker-compose.yml -f docker-compose.pi.yml'
+#   dc-pi up --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  edge-ai-nav:
+
+    # ── Hardware passthrough ─────────────────────────────────────────────────
+    devices:
+      - /dev/hailo0:/dev/hailo0        # Hailo-8L accelerator (PCIe)
+      - /dev/video0:/dev/video0        # Camera Module 3 (CSI / V4L2)
+      - /dev/ttyACM0:/dev/ttyACM0      # Hokuyo LiDAR (USB-CDC)
+
+    # ── Mount Hailo SDK from Pi host ─────────────────────────────────────────
+    # The HailoRT Python wheel is tied to the PCIe driver version on the host.
+    # Mounting rather than baking it into the image keeps them in sync.
+    volumes:
+      - ./config:/app/config:ro
+      - ./models:/app/models:ro
+      - ./logs:/app/logs:rw
+      - ./datasets:/app/datasets:ro
+      # Uncomment once HailoRT is installed on the Pi:
+      # - /usr/lib/hailo:/usr/lib/hailo:ro
+      # - /usr/lib/python3/dist-packages/hailo_platform:/usr/local/lib/python3.11/site-packages/hailo_platform:ro
+
+    environment:
+      EDGE_AI_INFERENCE_DEVICE: ${EDGE_AI_INFERENCE_DEVICE:-auto}
+
+    # ── Resource limits (Pi 5 — 8 GB variant) ────────────────────────────────
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "3.5"
+        reservations:
+          memory: 512M

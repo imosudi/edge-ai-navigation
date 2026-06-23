@@ -1,0 +1,8 @@
+# docker-compose.override.yml
+# Automatically merged with docker-compose.yml by `docker compose up`.
+# Keep this file empty of device overrides so dev builds always work.
+# For Pi hardware, use docker-compose.pi.yml explicitly.
+services:
+  edge-ai-nav:
+    environment:
+      EDGE_AI_INFERENCE_DEVICE: ${EDGE_AI_INFERENCE_DEVICE:-cpu}

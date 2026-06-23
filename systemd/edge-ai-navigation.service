@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# systemd/edge-ai-navigation.service
+#
+# Install:
+#   sudo cp systemd/edge-ai-navigation.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable edge-ai-navigation
+#   sudo systemctl start  edge-ai-navigation
+#
+# View logs:
+#   sudo journalctl -u edge-ai-navigation -f
+# ─────────────────────────────────────────────────────────────────────────────
+
+[Unit]
+Description=Edge AI Indoor Navigation System
+Documentation=https://github.com/imosudi/edge-ai-navigation
+After=network-online.target
+Wants=network-online.target
+# Ensure Hailo PCIe driver is loaded before starting
+After=sys-subsystem-hailo.device
+BindsTo=dev-hailo0.device
+
+[Service]
+Type=simple
+User=edgeai
+Group=edgeai
+
+# ── Working directory & environment ──────────────────────────────────────────
+WorkingDirectory=/opt/edge-ai-navigation
+EnvironmentFile=-/opt/edge-ai-navigation/.env
+
+# ── Executable ───────────────────────────────────────────────────────────────
+ExecStart=/opt/edge-ai-navigation/venv/bin/python -m uvicorn \
+    app.main:app \
+    --host 0.0.0.0 \
+    --port 8080 \
+    --loop asyncio \
+    --log-level info \
+    --no-access-log
+
+ExecReload=/bin/kill -HUP $MAINPID
+
+# ── Restart policy ────────────────────────────────────────────────────────────
+Restart=on-failure
+RestartSec=5s
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+# ── Resource limits ───────────────────────────────────────────────────────────
+MemoryMax=2G
+CPUQuota=350%           # 3.5 cores on Pi 5
+
+# ── Security hardening ────────────────────────────────────────────────────────
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/opt/edge-ai-navigation/logs /opt/edge-ai-navigation/datasets
+# Allow device access (camera, LiDAR, Hailo)
+DeviceAllow=/dev/hailo0 rw
+DeviceAllow=/dev/video0 rw
+DeviceAllow=/dev/ttyACM0 rw
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=edge-ai-nav
+
+# ── Watchdog ──────────────────────────────────────────────────────────────────
+WatchdogSec=60s
+
+[Install]
+WantedBy=multi-user.target
