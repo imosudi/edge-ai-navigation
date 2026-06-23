@@ -207,9 +207,8 @@ class YOLOPipeline:
 
     @property
     def _cfg_jpeg_quality(self) -> int:
-        # Access via parent config (camera section) if available
+        # Access via camera capture config if available
         try:
-            from config.config_loader import load_config
-            return load_config().camera.jpeg_quality
+            return self._camera._cfg.jpeg_quality
         except Exception:
             return 80
