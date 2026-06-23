@@ -207,7 +207,8 @@ class TelemetryCollector:
                 if hailo is not None:
                     data["hailo"] = await hailo.utilisation_stats()
                 else:
-                    data["hailo"] = {"available": False}
+                    data["hailo"] = {"available": False, "device_type": "cpu"}
+
 
                 await ws_manager.broadcast_json(data, channel="telemetry")
 

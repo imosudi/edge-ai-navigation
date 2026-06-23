@@ -32,7 +32,10 @@
     <section class="panel panel-camera" id="panel-camera">
       <div class="panel-head">
         <span class="panel-title">Camera Stream</span>
-        <span class="panel-badge" id="fps-inference">-- fps</span>
+        <div style="display: flex; gap: 6px; align-items: center;">
+          <span class="panel-badge" id="val-engine-type" style="text-transform: uppercase; font-weight: bold;">--</span>
+          <span class="panel-badge" id="fps-inference">-- fps</span>
+        </div>
       </div>
       <div class="camera-wrap">
         <img id="camera-feed" src="/static/img/placeholder.svg" alt="Camera stream" />
@@ -106,7 +109,7 @@
           <div class="metric-row"><span>Fusion FPS</span><span id="val-fps-fusion">--</span></div>
           <div class="metric-row"><span>Net ↓</span><span id="val-net-recv">--</span></div>
           <div class="metric-row"><span>Net ↑</span><span id="val-net-sent">--</span></div>
-          <div class="metric-row"><span>Hailo</span><span id="val-hailo">--</span></div>
+          <div class="metric-row"><span>Engine</span><span id="val-hailo" style="text-transform: uppercase;">--</span></div>
           <div class="metric-row"><span>Inf. Lat.</span><span id="val-inf-lat">--</span></div>
         </div>
       </div>

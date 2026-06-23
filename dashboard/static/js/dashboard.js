@@ -296,14 +296,32 @@ makeWS('/ws/telemetry', (data) => {
   document.getElementById('val-net-sent').textContent =
     data.network?.sent_kbps != null ? data.network.sent_kbps.toFixed(1) + ' KB/s' : '--';
 
-  // Hailo stats
+  // Hailo / Engine stats
   const h = data.hailo;
-  if (h?.available) {
-    document.getElementById('val-hailo').textContent = 'Active';
+  const engine = h?.device_type || 'cpu';
+
+  // Update header badge
+  const $engineBadge = document.getElementById('val-engine-type');
+  if ($engineBadge) {
+    $engineBadge.textContent = engine;
+    if (engine === 'npu') {
+      $engineBadge.style.color = '#00e5ff';
+      $engineBadge.style.background = 'rgba(0,229,255,0.08)';
+    } else if (engine === 'gpu') {
+      $engineBadge.style.color = '#ffb300';
+      $engineBadge.style.background = 'rgba(255,179,0,0.08)';
+    } else {
+      $engineBadge.style.color = '#7c4dff';
+      $engineBadge.style.background = 'rgba(124,77,255,0.08)';
+    }
+  }
+
+  // Update telemetry row
+  document.getElementById('val-hailo').textContent = engine;
+  if (h?.available || engine === 'npu') {
     document.getElementById('val-inf-lat').textContent =
       (h.last_latency_ms ?? '--') + ' ms';
   } else {
-    document.getElementById('val-hailo').textContent = 'CPU fallback';
     document.getElementById('val-inf-lat').textContent = '--';
   }
 }, null, 'Telemetry');

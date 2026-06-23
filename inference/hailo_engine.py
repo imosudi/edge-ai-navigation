@@ -146,10 +146,24 @@ class HailoInferenceEngine:
 
     async def utilisation_stats(self) -> dict[str, Any]:
         """Return Hailo-8L utilisation metrics for telemetry."""
+        device_type = "cpu"
+        if self._use_hailo:
+            device_type = "npu"
+        else:
+            try:
+                cpu_model = getattr(self, "_cpu_model", None)
+                if cpu_model is not None:
+                    dev_type = str(cpu_model.device.type).lower()
+                    if any(x in dev_type for x in ("cuda", "gpu", "mps", "xpu")):
+                        device_type = "gpu"
+            except Exception:
+                pass
+
         stats: dict[str, Any] = {
             "available":        self._use_hailo,
             "inference_count":  self._inference_count,
             "last_latency_ms":  round(self._last_latency_ms, 2),
+            "device_type":      device_type,
         }
         if self._inference_count > 0:
             stats["avg_latency_ms"] = round(
@@ -165,6 +179,7 @@ class HailoInferenceEngine:
                 stats["power_mw"] = None
 
         return stats
+
 
     async def shutdown(self) -> None:
         """Release Hailo hardware resources."""
