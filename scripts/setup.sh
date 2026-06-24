@@ -93,7 +93,11 @@ if [[ -n "${PYTHON}" && ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
     if [[ "${PYTHON}" == "python3" ]]; then
         PYTHON_PACKAGES+=(python3 python3-venv python3-dev)
     else
-        PYTHON_PACKAGES+=("${PYTHON}" "${PYTHON}-venv" "${PYTHON}-dev")
+        # Only add apt packages if the interpreter is NOT from pyenv
+        if [[ "${PYTHON}" != *"pyenv"* ]] && ! command -v pyenv >/dev/null 2>&1; then
+            PYTHON_PACKAGES+=("${PYTHON}" "${PYTHON}-venv" "${PYTHON}-dev")
+        fi
+        # pyenv-managed Python already has venv support built in — skip apt
     fi
 fi
 
