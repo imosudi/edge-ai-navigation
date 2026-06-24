@@ -80,23 +80,36 @@ class URGLidarDriver:
         import serial_asyncio  # type: ignore  # pyserial-asyncio
 
         logger.info("Connecting to LiDAR on %s @ %d baud", self._cfg.port, self._cfg.baudrate)
-        self._reader, self._writer = await serial_asyncio.open_serial_connection(
-            url=self._cfg.port,
-            baudrate=self._cfg.baudrate,
-        )
-        self._connected = True
+        try:
+            self._reader, self._writer = await serial_asyncio.open_serial_connection(
+                url=self._cfg.port,
+                baudrate=self._cfg.baudrate,
+            )
+            self._connected = True
 
-        await self._send_cmd(b"SCIP2.0")
-        await asyncio.sleep(0.1)
+            await self._send_cmd(b"SCIP2.0")
+            await asyncio.sleep(0.1)
 
-        info = await self._get_version_info()
-        logger.info("LiDAR connected: %s", info.get("model", "unknown"))
+            info = await self._get_version_info()
+            logger.info("LiDAR connected: %s", info.get("model", "unknown"))
 
-        await self._send_cmd(b"MD0044072500000")   # Start continuous scanning
-        logger.info("URG-04LX scanning started.")
+            await self._send_cmd(b"MD0044072500000")   # Start continuous scanning
+            logger.info("URG-04LX scanning started.")
+            self._is_mock = False
+        except Exception as exc:
+            logger.warning(
+                "Failed to connect to physical LiDAR on %s (%s). Falling back to Mock LiDAR simulation.",
+                self._cfg.port, exc
+            )
+            self._connected = True
+            self._is_mock = True
 
     async def disconnect(self) -> None:
         """Stop scanning and close the serial port."""
+        if getattr(self, "_is_mock", False):
+            self._connected = False
+            return
+
         if self._writer:
             try:
                 await self._send_cmd(b"QT")          # Quit / stop laser
@@ -114,7 +127,17 @@ class URGLidarDriver:
         Returns:
             Decoded scan dict, or None on read error.
         """
-        if not self._connected or self._reader is None:
+        if not self._connected:
+            return None
+
+        if getattr(self, "_is_mock", False):
+            await asyncio.sleep(1.0 / self._cfg.scan_frequency_hz)
+            scan = self._generate_mock_scan()
+            self.latest_scan = scan
+            self._scan_count += 1
+            return scan
+
+        if self._reader is None:
             return None
 
         try:
@@ -139,6 +162,48 @@ class URGLidarDriver:
             self._error_count += 1
             logger.error("LiDAR read error: %s", exc)
             return None
+
+    def _generate_mock_scan(self) -> dict[str, Any]:
+        """Generate a simulated LiDAR scan with a dynamic obstacle moving back and forth."""
+        import math
+        angles_deg: list[float] = []
+        distances_m: list[float] = []
+        intensities: list[float] = []
+
+        # Generate angles from angle_min_deg to angle_max_deg
+        # (URG-04LX has 0.35 degree resolution, so approx 682 steps for 240 degrees)
+        steps = 682
+        angle_range = self._cfg.angle_max_deg - self._cfg.angle_min_deg
+        angle_step = angle_range / steps
+
+        # Bouncing mock obstacle center angle (over time)
+        cycle_time = 8.0  # 8 seconds cycle
+        angle_center = 45.0 * math.sin(2.0 * math.pi * (time.time() % cycle_time) / cycle_time)
+        obstacle_width = 12.0  # 12 degrees wide
+        obstacle_distance = 1.6 + 0.6 * math.cos(2.0 * math.pi * (time.time() % 12.0) / 12.0)
+
+        for i in range(steps):
+            angle = self._cfg.angle_min_deg + i * angle_step
+            # Default background range is 4.0m with minor noise
+            dist = 4.0 + 0.05 * math.sin(angle * 0.1)
+            
+            # Check if angle falls within mock obstacle
+            if abs(angle - angle_center) < obstacle_width / 2.0:
+                dist = obstacle_distance + 0.02 * math.sin(angle * 0.5)
+
+            # Filter ranges using configuration thresholds
+            if self._cfg.min_range_m <= dist <= self._cfg.max_range_m:
+                angles_deg.append(round(angle, 3))
+                distances_m.append(round(dist, 4))
+                intensities.append(1.0)
+
+        return {
+            "angles":      angles_deg,
+            "distances":   distances_m,
+            "intensities": intensities,
+            "timestamp":   time.time(),
+            "scan_count":  self._scan_count + 1,
+        }
 
     # ── Internal helpers ────────────────────────────────────────────────────
 

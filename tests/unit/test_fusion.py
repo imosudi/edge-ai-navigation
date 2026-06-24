@@ -199,15 +199,18 @@ class TestScanProcessor:
     async def test_run_updates_driver_latest_scan(self):
         """ScanProcessor.run should update driver.latest_scan with processed fields."""
         import asyncio
-        from unittest.mock import AsyncMock
 
-        self.proc._driver.read_scan = AsyncMock(return_value={
-            "angles": [0.0],
-            "distances": [1.5],
-            "intensities": [1.0],
-            "timestamp": 123.45,
-            "scan_count": 5,
-        })
+        async def mock_read_scan():
+            await asyncio.sleep(0.001)
+            return {
+                "angles": [0.0],
+                "distances": [1.5],
+                "intensities": [1.0],
+                "timestamp": 123.45,
+                "scan_count": 5,
+            }
+
+        self.proc._driver.read_scan = mock_read_scan
         self.proc._driver.latest_scan = {}
         self.proc._ws_manager.connection_count.return_value = 0
 

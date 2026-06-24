@@ -141,19 +141,18 @@ docker-compose logs -f edge-ai-nav
 
 ### Option C - Development Mode (with CPU fallback)
 
+You can configure your local x86 laptop for development and debugging using the setup script:
+
 ```bash
-# Create venv
-python3.11 -m venv venv
+# 1. Run the cross-platform setup script (automatically configures local dev mode)
+./scripts/setup.sh
+
+# 2. Activate virtual environment
 source venv/bin/activate
-pip install -r requirements.txt
 
-# Download CPU model
-python -c "from ultralytics import YOLO; YOLO('yolov8n.pt')"
-cp ~/.config/Ultralytics/yolov8n.pt models/
-
-# Run (Hailo auto-detected; falls back to CPU if absent)
+# 3. Run development server (hardware streams will automatically use mock fallbacks)
 EDGE_AI_INFERENCE_DEVICE=cpu \
-python -m uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 ---

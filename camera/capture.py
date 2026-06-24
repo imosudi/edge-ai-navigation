@@ -182,7 +182,15 @@ class CameraCapture:
         """Fallback capture using OpenCV VideoCapture (for development/testing)."""
         self._cap = cv2.VideoCapture(self._cfg.device_index)
         if not self._cap.isOpened():
-            raise RuntimeError(f"Cannot open camera index {self._cfg.device_index}")
+            logger.warning(
+                "Cannot open camera index %d. Falling back to Mock Video Generator.",
+                self._cfg.device_index
+            )
+            self._cap = None
+            self._running = True
+            loop = asyncio.get_event_loop()
+            self._thread = loop.run_in_executor(None, self._capture_loop_mock)
+            return
 
         self._cap.set(cv2.CAP_PROP_FRAME_WIDTH,  self._cfg.width)
         self._cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self._cfg.height)
@@ -217,3 +225,73 @@ class CameraCapture:
                 self._frame_queue.put_nowait(frame)
             except Exception:
                 pass
+
+    def _capture_loop_mock(self) -> None:
+        """Mock camera loop that generates synthetic frames (for development/testing)."""
+        from telemetry.metrics import fps_camera
+
+        width = self._cfg.width or 640
+        height = self._cfg.height or 480
+        fps = self._cfg.fps or 30
+        frame_interval = 1.0 / fps
+
+        # Create base black frame
+        base_frame = np.zeros((height, width, 3), dtype=np.uint8)
+        
+        # Bouncing square properties
+        square_size = 60
+        x, y = 100, 100
+        dx, dy = 8, 8
+
+        while self._running:
+            t0 = time.time()
+            # Copy base frame
+            frame = base_frame.copy()
+            
+            # Draw grid
+            for i in range(0, width, 80):
+                cv2.line(frame, (i, 0), (i, height), (30, 30, 30), 1)
+            for j in range(0, height, 80):
+                cv2.line(frame, (0, j), (width, j), (30, 30, 30), 1)
+
+            # Move and draw bouncing square
+            x += dx
+            y += dy
+            if x <= 0 or x + square_size >= width:
+                dx = -dx
+            if y <= 0 or y + square_size >= height:
+                dy = -dy
+
+            # Draw target square (simulating a detected object)
+            cv2.rectangle(frame, (x, y), (x + square_size, y + square_size), (0, 200, 0), 2)
+            cv2.rectangle(frame, (x + 5, y + 5), (x + square_size - 5, y + square_size - 5), (0, 120, 0), -1)
+
+            # Add timestamp and mock label
+            cv2.putText(
+                frame,
+                f"MOCK WEBCAM: {time.strftime('%H:%M:%S')}",
+                (30, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 255, 0),
+                2,
+            )
+
+            self._latest_frame = frame
+            self._capture_count += 1
+            fps_camera.tick()
+
+            if self._frame_queue.full():
+                try:
+                    self._frame_queue.get_nowait()
+                except Exception:
+                    pass
+            try:
+                self._frame_queue.put_nowait(frame)
+            except Exception:
+                pass
+
+            # Control frame rate
+            elapsed = time.time() - t0
+            sleep_time = max(0.001, frame_interval - elapsed)
+            time.sleep(sleep_time)
