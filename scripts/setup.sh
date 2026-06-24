@@ -85,7 +85,11 @@ if [[ ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
         if (( python3_major == 3 && python3_minor >= 11 && python3_minor < 13 )); then
             PYTHON="python3"
         else
-            error "Detected unsupported Python version ${python3_version}. Install Python 3.11 or 3.12 before rerunning setup."
+            error "Detected unsupported Python version ${python3_version}."
+            error "The project requires Python 3.11 or 3.12 because numba is not compatible with Python 3.13."
+            error "Install a supported Python version before rerunning setup."
+            error "Example: sudo apt-get install python3.11 python3.11-venv python3.11-dev"
+            error "If your Debian 13 repo does not provide 3.11, use a compatible Python distribution or switch to Debian bookworm/trixie with the proper package sources."
         fi
     fi
 
