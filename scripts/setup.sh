@@ -116,7 +116,7 @@ fi
 
 # Base packages required on all systems
 PACKAGES=(
-    "${PYTHON_PACKAGES[@]}"
+    ${PYTHON_PACKAGES[@]+"${PYTHON_PACKAGES[@]}"}
     python3-pip
     git wget curl
     build-essential
