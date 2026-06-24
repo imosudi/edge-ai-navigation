@@ -99,7 +99,7 @@ PACKAGES=(
 
 # Add Pi-specific packages only on Raspberry Pi
 if $IS_PI; then
-    PACKAGES+=(python3-picamera2 libcamera-tools libraspberrypi-bin)
+    PACKAGES+=(python3-picamera2 libcamera-tools ) #libraspberrypi-bin)
 fi
 
 info "Installing system packages via apt..."
