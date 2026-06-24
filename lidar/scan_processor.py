@@ -101,6 +101,17 @@ class ScanProcessor:
             # Update shared sector map (for fusion engine)
             self.sector_range_m = processed["sectors"]
 
+            # Update driver's latest scan for sensor fusion and REST API compatibility
+            self._driver.latest_scan = {
+                "angles": processed["angles_deg"],
+                "distances": processed["distances_m"],
+                "intensities": processed["intensities"],
+                "sectors": processed["sectors"],
+                "sector_angles": processed["sector_angles"],
+                "timestamp": processed["timestamp"],
+                "scan_count": processed["scan_count"],
+            }
+
             # Broadcast to WebSocket clients
             if self._ws_manager.connection_count("lidar") > 0:
                 await self._ws_manager.broadcast_json(processed, channel="lidar")

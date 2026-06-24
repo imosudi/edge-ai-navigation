@@ -195,6 +195,36 @@ class TestScanProcessor:
         zones  = self.proc._detect_obstacle_zones(angles, dists)
         assert any(z["threat_level"] == "HIGH" for z in zones)
 
+    @pytest.mark.asyncio
+    async def test_run_updates_driver_latest_scan(self):
+        """ScanProcessor.run should update driver.latest_scan with processed fields."""
+        import asyncio
+        from unittest.mock import AsyncMock
+
+        self.proc._driver.read_scan = AsyncMock(return_value={
+            "angles": [0.0],
+            "distances": [1.5],
+            "intensities": [1.0],
+            "timestamp": 123.45,
+            "scan_count": 5,
+        })
+        self.proc._driver.latest_scan = {}
+        self.proc._ws_manager.connection_count.return_value = 0
+
+        shutdown_event = asyncio.Event()
+
+        async def stop_soon():
+            await asyncio.sleep(0.01)
+            shutdown_event.set()
+
+        asyncio.create_task(stop_soon())
+        await self.proc.run(shutdown_event)
+
+        assert "sectors" in self.proc._driver.latest_scan
+        assert "sector_angles" in self.proc._driver.latest_scan
+        assert self.proc._driver.latest_scan["distances"] == [1.5]
+        assert self.proc._driver.latest_scan["scan_count"] == 5
+
 
 class TestHailoEngine:
     """Tests for inference/hailo_engine.py - CPU path only."""

@@ -89,49 +89,40 @@ pip install hailo-model-zoo
 hailomz --help
 ```
 
-### 2.2 Download calibration dataset
-
-The compiler needs a small calibration dataset (COCO subset):
-
-```bash
-# Using Hailo's provided calibration script
-python -m hailo_model_zoo.main download_data coco2017_val \
-    --target-dir datasets/coco_calib/ \
-    --subset-size 1024
-```
+### 2.2 Prepare Calibration Dataset
+The compiler needs a small calibration dataset (COCO subset). See [MODEL_COMPILE.md](MODEL_COMPILE.md) for how to set up the dataset quickly using `wget` and a subset of validation images.
 
 ### 2.3 Compile YOLOv8n → .hef
+Export the PyTorch weights to ONNX (with `opset=11`), and run the compiler. 
+
+> [!NOTE]
+> You must explicitly specify the 6 output convolution end nodes via `--end-node-names` to bypass the `depth_to_space` allocator exception during parsing. For full details and required python package setup, see the comprehensive [MODEL_COMPILE.md](MODEL_COMPILE.md).
 
 ```bash
-# First export from ultralytics to ONNX
+# Export from ultralytics to ONNX
 python -c "
 from ultralytics import YOLO
 yolo = YOLO('yolov8n.pt')
 yolo.export(format='onnx', imgsz=640, opset=11, simplify=True)
 "
 
-# Compile to .hef for Hailo-8L
+# Compile to .hef for Hailo-8L / Hailo-15L
 hailomz compile yolov8n \
     --ckpt yolov8n.onnx \
     --hw-arch hailo8l \
     --calib-path datasets/coco_calib/ \
-    --classes 80 \
     --performance \
-    --output-dir models/
-
-# Output: models/yolov8n.hef  (~4.2 MB)
+    --end-node-names /model.22/cv2.0/cv2.0.2/Conv /model.22/cv3.0/cv3.0.2/Conv /model.22/cv2.1/cv2.1.2/Conv /model.22/cv3.1/cv3.1.2/Conv /model.22/cv2.2/cv2.2.2/Conv /model.22/cv3.2/cv3.2.2/Conv
 ```
 
 Compilation takes approximately **15–45 minutes** on a modern x86 host.
 
 ### 2.4 Copy .hef to Raspberry Pi
-
 ```bash
-scp models/yolov8n.hef pi@raspberrypi.local:/opt/edge-ai-navigation/models/
+scp yolov8n.hef pi@raspberrypi.local:/opt/edge-ai-navigation/models/
 ```
 
 ### 2.5 Update configuration
-
 Edit `config/settings.yaml`:
 ```yaml
 inference:
@@ -163,7 +154,7 @@ hailomz compile yolov8s \
     --hw-arch hailo8l \
     --calib-path datasets/coco_calib/ \
     --performance \
-    --output-dir models/
+    --end-node-names /model.22/cv2.0/cv2.0.2/Conv /model.22/cv3.0/cv3.0.2/Conv /model.22/cv2.1/cv2.1.2/Conv /model.22/cv3.1/cv3.1.2/Conv /model.22/cv2.2/cv2.2.2/Conv /model.22/cv3.2/cv3.2.2/Conv
 ```
 
 Update `config/settings.yaml`:

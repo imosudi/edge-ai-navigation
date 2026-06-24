@@ -1,104 +1,160 @@
-# Hailo-8L Model Compilation Guide (ONNX → HEF)
+# Hailo AI Model Compilation Guide (ONNX → HEF)
 
-This guide describes how to compile PyTorch/ONNX YOLO models into the **Hailo Executable Format (`.hef`)** required for hardware acceleration on the Raspberry Pi 5 + Hailo AI HAT+.
+This guide describes how to compile PyTorch/ONNX YOLO models into the **Hailo Executable Format (`.hef`)** required for hardware acceleration on the Raspberry Pi 5 + Hailo AI HAT+ (using the Hailo-8L / Hailo-15L arch).
 
 > [!IMPORTANT]
-> The model compilation process is computationally heavy. While `hailo-model-zoo` is installed as part of the project dependencies (on both x86_64 and ARM64/Raspberry Pi 5), actual ONNX-to-HEF compilation requires the **Hailo Dataflow Compiler (DFC)**. Since DFC is proprietary and only compiled for x86_64 architectures, compilation runs on an x86_64 Linux host or inside a virtualized container environment.
+> Model compilation (quantization and partitioning) is computationally heavy and requires the **Hailo Dataflow Compiler (DFC)**. Since the DFC is proprietary and only built for x86_64, you must run this compilation process on an **x86_64 Linux host machine** (Ubuntu 22.04 or 24.04 LTS is recommended).
 
 ---
 
-## 1. Prerequisites & Environment Setup
+## 1. Prerequisites & Environment Setup (x86_64 Host)
 
-1. **System Requirements**: Ubuntu 22.04/24.04 LTS (recommended) x86_64 machine, or Raspberry Pi 5 (ARM64) for runtime/local configurations.
-2. **HailoRT & PCIe Drivers**: Install the matching HailoRT version (matching the target Pi package, e.g., v4.18+).
-3. **Python Virtual Environment & Dependencies**:
-   Install the project dependencies. Since `hailo-model-zoo` depends on the proprietary `hailo-dataflow-compiler` (which is not hosted on PyPI), you have two options for installation:
+Before compiling the model, you need to prepare the x86_64 host environment with Python 3.8–3.12, the correct system libraries, and the Hailo SDK components.
 
-   #### Option A: Standard Installation (Recommended for Compilation)
-   If you intend to compile models, download the compiler wheel from Hailo first:
-   1. Register and download the Dataflow Compiler wheel (`hailo_dataflow_compiler-5.3.0-py3-none-any.whl` or similar) from the [Hailo Developer Zone](https://hailo.ai/developer-zone/).
-   2. Install the wheel in your virtual environment:
-      ```bash
-      python3 -m venv venv
-      source venv/bin/activate
-      pip install --upgrade pip wheel setuptools
-      pip install /path/to/hailo_dataflow_compiler-5.3.0-py3-none-any.whl
-      pip install -r requirements.txt
-      ```
+### 1.1 Install System Dependencies
+Pillow and the DFC require specific image processing and graph libraries to build and run correctly. Install them using your system package manager:
+```bash
+sudo apt-get update
+sudo apt-get install -y \
+  graphviz \
+  libgraphviz-dev \
+  pkg-config \
+  libjpeg-dev \
+  zlib1g-dev \
+  libpng-dev \
+  libtiff-dev \
+  libwebp-dev \
+  liblcms2-dev \
+  libfreetype6-dev
+```
 
-   #### Option B: Bypass Dependencies (For Workspace Setup / Offline Inspection)
-   If you want to install dependencies without checking for the proprietary compiler (e.g. on a Raspberry Pi or target system where you won't run compiles):
+### 1.2 Set up the Python Virtual Environment
+Initialize a virtual environment and install the Hailo Dataflow Compiler wheel along with the required version of the Hailo Model Zoo:
+
+1. Register and download the Dataflow Compiler wheel (`hailo_dataflow_compiler-5.3.0-py3-none-linux_x86_64.whl` or similar) from the [Hailo Developer Zone](https://hailo.ai/developer-zone/).
+2. Create the virtual environment and install dependencies:
    ```bash
    python3 -m venv venv
    source venv/bin/activate
    pip install --upgrade pip wheel setuptools
-   # Install model-zoo bypassing package dependency checks:
-   pip install git+https://github.com/hailo-ai/hailo_model_zoo.git --no-deps
-   # Install the remaining standard project dependencies:
-   pip install -r requirements.txt
-   ```
-   *Note: Using Option B will result in a runtime `ModuleNotFoundError` if you attempt to execute `hailomz compile` without the compiler wheel installed.*
 
+   # Install the compiler wheel
+   pip install hailo_dataflow_compiler-5.3.0-py3-none-linux_x86_64.whl
+
+   # Install Model Zoo with PyPI simple index constraint to avoid Pillow version conflicts
+   pip install git+https://github.com/hailo-ai/hailo_model_zoo.git \
+     --extra-index-url https://pypi.org/simple \
+     "Pillow!=9.3.0"
+
+   # Install Ultralytics for PyTorch model loading and ONNX exporting
+   pip install ultralytics
+   ```
 
 ---
 
 ## 2. Compilation Workflow
 
-### Step 1: Export ONNX model from Raspberry Pi 5 or Host
-First, download the PyTorch weights and export them to an optimized ONNX format. You can run this command directly on your Pi or host machine:
-```bash
-bash scripts/download_model.sh yolov8n
-# Or for YOLOv8s:
-# bash scripts/download_model.sh yolov8s
+Follow these steps on your x86_64 host machine to download, export, calibrate, and compile the model.
+
+### Step 1: Export the YOLO Model to ONNX
+We load the PyTorch weights and export them to an optimized ONNX model. **You must specify `opset=11` and `imgsz=640`** to match the Hailo Model Zoo parser expectations:
+
+```python
+python3 -c "
+from ultralytics import YOLO
+model = YOLO('yolov8n.pt')  # Downloads pretrained YOLOv8n weights
+model.export(format='onnx', opset=11, simplify=True, dynamic=False, imgsz=640)
+"
+# Move the exported ONNX model to the models directory
+mkdir -p models
+mv yolov8n.onnx models/yolov8n.onnx
 ```
-This generates `models/yolov8n.onnx` (or `models/yolov8s.onnx`).
 
-### Step 2: Prepare Calibration Dataset (on x86_64 Host)
-Quantization requires a small, representative dataset (usually 100–1000 images) to calibrate the model's weights to 8-bit integers without losing accuracy:
-1. Download a subset of the COCO validation dataset.
-2. Store the calibration images in `datasets/coco_calib/`.
+### Step 2: Prepare the Calibration Dataset
+Quantization translates 32-bit floating-point weights into 8-bit integers (`INT8`). To calibrate without losing accuracy, the compiler needs a representative subset of validation images (64–128 images):
 
-### Step 3: Run the Hailo Compiler (on x86_64 Host)
-Run the compilation task using the Hailo Model Zoo command-line interface. This step parses the ONNX model, matches it to the Hailo hardware constraints, quantizes the weights, and compiles the `.hef` binary.
+```bash
+# Create directory
+mkdir -p datasets/coco_calib
 
-#### For YOLOv8n:
+# Download subset of COCO val2017 dataset
+wget http://images.cocodataset.org/zips/val2017.zip -O val2017.zip
+unzip val2017.zip -d val2017
+
+# Copy the first 128 images into datasets/coco_calib/ for calibration
+ls val2017/val2017/ | head -128 | xargs -I{} cp val2017/val2017/{} datasets/coco_calib/
+
+# Clean up temporary downloads
+rm -rf val2017 val2017.zip
+```
+
+### Step 3: Setup NMS Post-Processing Config (Workaround)
+The Hailo Model Zoo scripts look for post-processing configurations relative to the script directory using `../../postprocess_config/`. Due to directory layout differences in python package installations, this path lookup fails. Fix it by creating a symbolic link within the virtual environment:
+
+```bash
+ln -s ../postprocess_config venv/lib/python3.12/site-packages/hailo_model_zoo/cfg/alls/postprocess_config
+```
+
+### Step 4: Run the Hailo Compiler
+To compile the model, run `hailomz compile`.
+
+> [!WARNING]
+> **Allocator Script Parser Error (`depth_to_space`)**
+> During ONNX simplification, certain post-processing sub-graphs in the YOLOv8 head are converted into operations like `depth_to_space`. If you run compile without specifying output boundaries, the parser attempts to include these downstream layers. Because the post-processor expects raw convolutional layers at the output, it throws an `AllocatorScriptParserException: Error in the last layers of the model, expected conv but found LayerType.depth_to_space layer.`
+> 
+> **Solution:** You must explicitly pass the names of the **6 output convolution layers** (representing the bounding box and classification predictions for the three output strides) using the `--end-node-names` parameter.
+
+Run the compiler with `--end-node-names`:
+
+#### For Raspberry Pi 5 + Hailo AI HAT+ (hailo15l):
+```bash
+hailomz compile yolov8n \
+    --ckpt models/yolov8n.onnx \
+    --hw-arch hailo15l \
+    --calib-path datasets/coco_calib/ \
+    --performance \
+    --end-node-names /model.22/cv2.0/cv2.0.2/Conv /model.22/cv3.0/cv3.0.2/Conv /model.22/cv2.1/cv2.1.2/Conv /model.22/cv3.1/cv3.1.2/Conv /model.22/cv2.2/cv2.2.2/Conv /model.22/cv3.2/cv3.2.2/Conv
+```
+
+#### For Hailo-8 (hailo8l):
 ```bash
 hailomz compile yolov8n \
     --ckpt models/yolov8n.onnx \
     --hw-arch hailo8l \
     --calib-path datasets/coco_calib/ \
-    --classes 80 \
-    --performance
+    --performance \
+    --end-node-names /model.22/cv2.0/cv2.0.2/Conv /model.22/cv3.0/cv3.0.2/Conv /model.22/cv2.1/cv2.1.2/Conv /model.22/cv3.1/cv3.1.2/Conv /model.22/cv2.2/cv2.2.2/Conv /model.22/cv3.2/cv3.2.2/Conv
 ```
 
-#### For YOLOv8s:
+The compiled binary (`yolov8n.hef`) will be saved in your working directory.
+
+---
+
+## 3. Deploy to Raspberry Pi 5
+
+Once compilation completes, transfer the `.hef` file to the target device and load it.
+
+### Step 1: Transfer the `.hef` File
+Copy the compiled HEF binary to the Pi:
 ```bash
-hailomz compile yolov8s \
-    --ckpt models/yolov8s.onnx \
-    --hw-arch hailo8l \
-    --calib-path datasets/coco_calib/ \
-    --classes 80 \
-    --performance
+mv yolov8n.hef models/
+scp models/yolov8n.hef pi@raspberrypi.local:/opt/edge-ai-navigation/models/
 ```
 
-The output file (`yolov8n.hef` or `yolov8s.hef`) will be saved in the current directory.
-
-### Step 4: Transfer the compiled HEF to the Raspberry Pi 5
-Copy the compiled HEF binary to the models directory on the Raspberry Pi:
-```bash
-scp yolov8n.hef pi@<pi-ip>:/opt/edge-ai-navigation/models/
-```
-
-### Step 5: Update Runtime Configuration
-Edit `/opt/edge-ai-navigation/config/settings.yaml` on the Raspberry Pi 5 to use the new NPU model:
+### Step 2: Update runtime configuration
+On the Raspberry Pi 5, edit `/opt/edge-ai-navigation/config/settings.yaml`:
 ```yaml
 inference:
-  model_name: "yolov8n"          # Or "yolov8s"
-  model_path: "models/yolov8n.hef" # Path to target HEF file
-  device: "hailo"                # Set to "hailo" (or "auto") to enable NPU
+  model_name: "yolov8n"
+  model_path: "models/yolov8n.hef"
+  device: "hailo"
 ```
 
-Restart the systemd service to apply the change:
+### Step 3: Restart the Service
 ```bash
 sudo systemctl restart edge-ai-navigation
+```
+Verify the logs to ensure the device is running inference on the NPU:
+```bash
+sudo journalctl -u edge-ai-navigation -n 100 -f
 ```
