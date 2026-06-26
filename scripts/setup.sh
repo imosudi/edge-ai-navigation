@@ -61,15 +61,17 @@ section "Installing system packages"
 sudo apt-get update -qq
 
 # Prefer a supported installed interpreter if present
-if command -v python3.12 >/dev/null 2>&1; then
-    PYTHON="python3.12"
-elif command -v python3.11 >/dev/null 2>&1; then
-    PYTHON="python3.11"
-fi
+SUPPORTED_PYTHON_VERSIONS=("3.12" "3.11")
+for ver in "${SUPPORTED_PYTHON_VERSIONS[@]}"; do
+    if command -v "python${ver}" >/dev/null 2>&1; then
+        PYTHON="python${ver}"
+        break
+    fi
+done
 
 # Detect supported Python versions from apt packages if no supported interpreter exists
 if [[ -z "${PYTHON}" ]] && command -v apt-cache >/dev/null 2>&1; then
-    for ver in 3.12 3.11; do
+    for ver in "${SUPPORTED_PYTHON_VERSIONS[@]}"; do
         if apt-cache show "python${ver}" >/dev/null 2>&1 && apt-cache show "python${ver}-venv" >/dev/null 2>&1; then
             PYTHON="python${ver}"
             PYTHON_PACKAGES+=("python${ver}" "python${ver}-venv" "python${ver}-dev")
@@ -79,7 +81,7 @@ if [[ -z "${PYTHON}" ]] && command -v apt-cache >/dev/null 2>&1; then
 fi
 
 # Fall back to system python3 if its version is supported
-if [[ -z "${PYTHON}" && $(command -v python3 >/dev/null 2>&1; echo $?) -eq 0 ]]; then
+if [[ -z "${PYTHON}" ]] && command -v python3 >/dev/null 2>&1; then
     python3_version="$(python3 --version 2>&1 | awk '{print $2}')"
     python3_major="${python3_version%%.*}"
     python3_minor="${python3_version#*.}"
@@ -89,29 +91,42 @@ if [[ -z "${PYTHON}" && $(command -v python3 >/dev/null 2>&1; echo $?) -eq 0 ]];
     fi
 fi
 
-if [[ -n "${PYTHON}" && ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
+if [[ -n "${PYTHON}" ]]; then
     if [[ "${PYTHON}" == "python3" ]]; then
         PYTHON_PACKAGES+=(python3 python3-venv python3-dev)
-    else
-        # Only add apt packages if the interpreter is NOT from pyenv
-        if [[ "${PYTHON}" != *"pyenv"* ]] && ! command -v pyenv >/dev/null 2>&1; then
+    elif [[ ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
+        if command -v pyenv >/dev/null 2>&1 && pyenv which "${PYTHON}" >/dev/null 2>&1; then
+            info "Using pyenv-managed Python interpreter ${PYTHON}."
+        elif "${PYTHON}" -m venv --help >/dev/null 2>&1; then
+            info "Using custom Python interpreter ${PYTHON} with builtin venv support."
+        else
             PYTHON_PACKAGES+=("${PYTHON}" "${PYTHON}-venv" "${PYTHON}-dev")
         fi
-        # pyenv-managed Python already has venv support built in — skip apt
     fi
 fi
 
-if [[ ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
+info "Selected Python interpreter: ${PYTHON:-none}"
+info "Python packages to install: ${PYTHON_PACKAGES[*]:-none}"
+
+if [[ -z "${PYTHON}" ]]; then
     python3_version="$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo 'unknown')"
-    error "Detected unsupported Python version ${python3_version}."
-    error "The project requires Python 3.11 or 3.12 because numba is not compatible with Python 3.13."
-    error "Install a supported Python version before rerunning setup."
-    error "Example: sudo apt-get install python3.11 python3.11-venv python3.11-dev"
-    error "If your Debian 13 repo does not provide 3.11, use a compatible Python distribution or switch to a repo that provides the needed packages."
+    warn "Detected unsupported Python version ${python3_version}."
+    warn "The project requires Python 3.11 or 3.12 because numba is not compatible with Python 3.13."
+    warn "Install a supported Python version before rerunning setup."
+    warn "Example: sudo apt-get install python3.12 python3.12-venv python3.12-dev"
+    warn "If your Debian 13 repo does not provide 3.12, use a compatible Python distribution or switch to a repo that provides the needed packages."
+    error "Supported Python not found."
 fi
 
 if [[ ${#PYTHON_PACKAGES[@]} -eq 0 ]]; then
-    error "No supported Python version found. Install Python 3.11 or 3.12 and rerun setup."
+    if ! "${PYTHON}" -m venv --help >/dev/null 2>&1; then
+        python3_version="$(python3 --version 2>&1 | awk '{print $2}' 2>/dev/null || echo 'unknown')"
+        warn "Detected unsupported Python version ${python3_version}."
+        warn "The project requires Python 3.11 or 3.12 because numba is not compatible with Python 3.13."
+        warn "Install a supported Python version before rerunning setup."
+        warn "Example: sudo apt-get install python3.12 python3.12-venv python3.12-dev"
+        error "Supported Python not found."
+    fi
 fi
 
 # Base packages required on all systems
