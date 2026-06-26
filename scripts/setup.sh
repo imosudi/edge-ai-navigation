@@ -23,9 +23,9 @@ section() { echo -e "\n${GREEN}══ $* ══${NC}"; }
 INSTALL_DIR="/opt/edge-ai-navigation"
 VENV_DIR="${INSTALL_DIR}/venv"
 SERVICE_USER="edgeai"
-PYTHON="python3.11"
+PYTHON=""
 HAILO_REPO="https://hailo.ai/developer-zone/software-downloads/"   # requires registration
-REQUIRED_PYTHON_VERSION="3.11"
+REQUIRED_PYTHON_VERSION=""
 
 # ── Checks ────────────────────────────────────────────────────────────────────
 section "Pre-flight checks"
@@ -40,77 +40,134 @@ info "OS: $(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d '\"')"
 section "Installing system packages"
 
 sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends \
-    python3.11 python3.11-venv python3.11-dev \
-    python3-pip \
-    git wget curl \
-    build-essential \
-    libgl1-mesa-dev \
-    libglib2.0-dev \
-    libsm6 libxrender1 libxext6 \
-    libjpeg-dev libpng-dev \
-    libopencv-dev \
-    v4l-utils \
-    udev \
-    pkg-config \
-    cmake \
-    # Camera
-    python3-picamera2 \
-    libcamera-tools \
-    # Serial (LiDAR)
-    python3-serial \
-    setserial \
-    # System monitoring
-    lm-sensors \
-    # vcgencmd
-    libraspberrypi-bin \
-    # Process tools
-    htop \
-    iotop \
+
+PYTHON_CANDIDATES=(python3.11 python3.12)
+COMMON_PKG_LIST=(
+    python3-pip
+    git
+    wget
+    curl
+    build-essential
+    libgl1-mesa-dev
+    libglib2.0-dev
+    libsm6
+    libxrender1
+    libxext6
+    libjpeg-dev
+    libpng-dev
+    libopencv-dev
+    v4l-utils
+    udev
+    pkg-config
+    cmake
+    python3-serial
+    setserial
+    lm-sensors
+    htop
+    iotop
     nethogs
+)
+PI_ONLY_PKG_LIST=(
+    python3-picamera2
+    libcamera-tools
+    libraspberrypi-bin
+)
+
+if [[ $(uname -m) != "aarch64" ]]; then
+    warn "Non-ARM64 detected; skipping Raspberry Pi-specific packages: ${PI_ONLY_PKG_LIST[*]}"
+    PACKAGE_LIST=("${COMMON_PKG_LIST[@]}")
+else
+    PACKAGE_LIST=("${COMMON_PKG_LIST[@]}" "${PI_ONLY_PKG_LIST[@]}")
+fi
+
+install_packages() {
+    local py="$1"
+    sudo apt-get install -y --no-install-recommends \
+        "${py}" "${py}-venv" "${py}-dev" "${PACKAGE_LIST[@]}"
+}
+
+for candidate in "${PYTHON_CANDIDATES[@]}"; do
+    info "Attempting to install packages with ${candidate}."
+    if install_packages "${candidate}"; then
+        PYTHON="${candidate}"
+        REQUIRED_PYTHON_VERSION="${candidate#python3.}"
+        break
+    fi
+    warn "${candidate} packages not available; trying next candidate."
+done
+
+if [[ -z "${PYTHON}" ]]; then
+    error "Could not install python3.11 or python3.12. Please install a supported Python version manually."
+fi
 
 info "System packages installed."
 
 # ── Raspberry Pi 5 optimisations ─────────────────────────────────────────────
-section "Applying Raspberry Pi 5 optimisations"
-
-# Enable PCIe Gen 3 (improves Hailo HAT+ throughput)
-if ! grep -q "dtparam=pciex1_gen=3" /boot/firmware/config.txt 2>/dev/null; then
-    echo "" | sudo tee -a /boot/firmware/config.txt
-    echo "# Edge AI Navigation — PCIe Gen 3 for Hailo HAT+" | sudo tee -a /boot/firmware/config.txt
-    echo "dtparam=pciex1_gen=3" | sudo tee -a /boot/firmware/config.txt
-    info "PCIe Gen 3 enabled (reboot required)."
+if [[ $(uname -m) != "aarch64" ]]; then
+    warn "Non-ARM64 detected; skipping Raspberry Pi 5 optimisations."
 else
-    info "PCIe Gen 3 already enabled."
-fi
+    section "Applying Raspberry Pi 5 optimisations"
 
-# Enable camera (CSI)
-if ! grep -q "camera_auto_detect=1" /boot/firmware/config.txt 2>/dev/null; then
-    echo "camera_auto_detect=1" | sudo tee -a /boot/firmware/config.txt
-fi
+    # Enable PCIe Gen 3 (improves Hailo HAT+ throughput)
+    if ! grep -q "dtparam=pciex1_gen=3" /boot/firmware/config.txt 2>/dev/null; then
+        echo "" | sudo tee -a /boot/firmware/config.txt
+        echo "# Edge AI Navigation — PCIe Gen 3 for Hailo HAT+" | sudo tee -a /boot/firmware/config.txt
+        echo "dtparam=pciex1_gen=3" | sudo tee -a /boot/firmware/config.txt
+        info "PCIe Gen 3 enabled (reboot required)."
+    else
+        info "PCIe Gen 3 already enabled."
+    fi
 
-# Set GPU memory split (128 MB for camera processing)
-if ! grep -q "gpu_mem=128" /boot/firmware/config.txt 2>/dev/null; then
-    echo "gpu_mem=128" | sudo tee -a /boot/firmware/config.txt
-fi
+    # Enable camera (CSI)
+    if ! grep -q "camera_auto_detect=1" /boot/firmware/config.txt 2>/dev/null; then
+        echo "camera_auto_detect=1" | sudo tee -a /boot/firmware/config.txt
+    fi
 
-# Increase USB buffer for LiDAR
-if ! grep -q "usbcore.usbfs_memory_mb" /boot/firmware/cmdline.txt 2>/dev/null; then
-    sudo sed -i 's/$/ usbcore.usbfs_memory_mb=256/' /boot/firmware/cmdline.txt
-    info "USB memory buffer increased."
-fi
+    # Set GPU memory split (128 MB for camera processing)
+    if ! grep -q "gpu_mem=128" /boot/firmware/config.txt 2>/dev/null; then
+        echo "gpu_mem=128" | sudo tee -a /boot/firmware/config.txt
+    fi
 
-# CPU governor: performance (sustained throughput > power saving)
-echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
-info "CPU governor set to 'performance'."
+    # Increase USB buffer for LiDAR
+    if ! grep -q "usbcore.usbfs_memory_mb" /boot/firmware/cmdline.txt 2>/dev/null; then
+        sudo sed -i 's/$/ usbcore.usbfs_memory_mb=256/' /boot/firmware/cmdline.txt
+        info "USB memory buffer increased."
+    fi
+
+    # CPU governor: performance (sustained throughput > power saving)
+    echo "performance" | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+    info "CPU governor set to 'performance'."
+fi
 
 # ── User and groups ───────────────────────────────────────────────────────────
 section "Creating service user"
 
+SERVICE_GROUPS=(dialout video plugdev)
+if [[ $(uname -m) == "aarch64" ]]; then
+    SERVICE_GROUPS+=(gpio i2c spi)
+else
+    warn "Non-ARM64 detected; skipping Raspberry Pi-specific groups: gpio, i2c, spi"
+fi
+
+GROUPS_TO_ADD=()
+for group in "${SERVICE_GROUPS[@]}"; do
+    if getent group "${group}" >/dev/null 2>&1; then
+        GROUPS_TO_ADD+=("${group}")
+    else
+        warn "Group '${group}' does not exist; skipping"
+    fi
+done
+
 if ! id "${SERVICE_USER}" &>/dev/null; then
-    sudo useradd -r -m -d "${INSTALL_DIR}" \
-        -G dialout,video,gpio,i2c,spi,plugdev \
-        -s /bin/bash "${SERVICE_USER}"
+    if [[ ${#GROUPS_TO_ADD[@]} -gt 0 ]]; then
+        IFS=, GROUP_LIST="${GROUPS_TO_ADD[*]}"
+        sudo useradd -r -m -d "${INSTALL_DIR}" \
+            -G "${GROUP_LIST}" \
+            -s /bin/bash "${SERVICE_USER}"
+    else
+        sudo useradd -r -m -d "${INSTALL_DIR}" \
+            -s /bin/bash "${SERVICE_USER}"
+    fi
     info "User '${SERVICE_USER}' created."
 else
     info "User '${SERVICE_USER}' already exists."
