@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import signal
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -71,7 +70,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         logger.info("Camera capture pipeline ready.")
     except Exception as exc:
         logger.error("Camera initialisation failed: %s", exc)
-        raise RuntimeError("Camera is required - cannot start.") from exc
+        raise RuntimeError("Camera is required — cannot start.") from exc
 
     try:
         lidar = URGLidarDriver(cfg.lidar)
@@ -143,7 +142,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     yield  # ← application serves requests here
 
     # ── Graceful shutdown ──────────────────────────────────────────────────
-    logger.info("Shutdown signal received - stopping all tasks …")
+    logger.info("Shutdown signal received — stopping all tasks …")
     _shutdown_event.set()
 
     for task in tasks:
@@ -205,14 +204,6 @@ def create_application() -> FastAPI:
     # ── Static files (dashboard UI) ────────────────────────────────────────
     app.mount("/static", StaticFiles(directory="dashboard/static"), name="static")
 
-    # ── Signal handlers (graceful shutdown on SIGINT / SIGTERM) ───────────
-    def _handle_signal(signum: int, frame: object) -> None:
-        logger.info("Received signal %s - initiating shutdown.", signum)
-        _shutdown_event.set()
-
-    signal.signal(signal.SIGINT,  _handle_signal)
-    signal.signal(signal.SIGTERM, _handle_signal)
-
     return app
 
 
@@ -227,7 +218,7 @@ if __name__ == "__main__":
         port=cfg.api.port,
         reload=False,
         log_level=cfg.logging.level.lower(),
-        workers=1,           # Single worker - hardware is shared state
+        workers=1,           # Single worker — hardware is shared state
         access_log=True,
         loop="asyncio",
     )

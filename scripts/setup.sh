@@ -157,10 +157,14 @@ if $IS_PI; then
     PACKAGES+=(python3-picamera2 libcamera-tools ) #libraspberrypi-bin)
 fi
 
-info "Installing system packages via apt..."
-sudo apt-get install -y --no-install-recommends "${PACKAGES[@]}"
-
-info "System packages installed."
+if sudo -n true 2>/dev/null; then
+    info "Installing system packages via apt..."
+    sudo apt-get install -y --no-install-recommends "${PACKAGES[@]}"
+    info "System packages installed."
+else
+    warn "sudo access is not available without a password; skipping apt package installation."
+    warn "Continuing with the existing local environment and Python venv."
+fi
 
 # ── Raspberry Pi 5 optimisations ─────────────────────────────────────────────
 if $IS_PI; then
@@ -291,7 +295,12 @@ else
         info "Virtual environment created at ${VENV_DIR}."
     fi
     "${VENV_DIR}/bin/pip" install --upgrade pip wheel setuptools
-    "${VENV_DIR}/bin/pip" install --no-cache-dir -r "${INSTALL_DIR}/requirements.txt"
+
+    if [[ -f "${INSTALL_DIR}/requirements-dev.txt" ]]; then
+        "${VENV_DIR}/bin/pip" install --no-cache-dir -r "${INSTALL_DIR}/requirements-dev.txt"
+    else
+        "${VENV_DIR}/bin/pip" install --no-cache-dir -r "${INSTALL_DIR}/requirements.txt"
+    fi
 fi
 info "Virtual environment ready at ${VENV_DIR}."
 
