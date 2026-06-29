@@ -69,7 +69,11 @@ info "Sync complete."
 info "Updating dependencies…"
 ssh_run "${REMOTE}" bash -s <<REMOTE_SCRIPT
     cd "${REMOTE_DIR}"
-    sudo -u edgeai "${REMOTE_DIR}/venv/bin/pip" install \
+    ENV_VARS=""
+    if [[ -d "${REMOTE_DIR}/python-runtime" ]]; then
+        ENV_VARS="LD_LIBRARY_PATH=${REMOTE_DIR}/python-runtime/lib PKG_CONFIG_PATH=${REMOTE_DIR}/python-runtime/lib/pkgconfig"
+    fi
+    sudo -u edgeai ${ENV_VARS} "${REMOTE_DIR}/venv/bin/pip" install \
         --no-cache-dir -q -r requirements.txt
 REMOTE_SCRIPT
 
