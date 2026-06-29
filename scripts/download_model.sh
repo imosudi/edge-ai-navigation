@@ -25,6 +25,12 @@ else
     PIP_CMD="pip3"
 fi
 
+# Add dynamic library path if custom python-runtime is used
+PROJECT_DIR="$(dirname "${MODELS_DIR}")"
+if [[ -d "${PROJECT_DIR}/python-runtime" ]]; then
+    export LD_LIBRARY_PATH="${PROJECT_DIR}/python-runtime/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+
 # Ensure hailo-model-zoo is installed
 if ! "${PYTHON_CMD}" -c "import hailo_model_zoo" 2>/dev/null; then
     echo "=== hailo-model-zoo not found. Installing from git... ==="

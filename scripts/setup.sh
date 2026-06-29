@@ -150,6 +150,7 @@ PACKAGES=(
     htop
     iotop
     nethogs
+    patchelf
 )
 
 # Add Pi-specific packages only on Raspberry Pi
@@ -302,6 +303,16 @@ if $IS_PI && [[ -n "${PYTHON}" ]]; then
                 sudo rsync -a --delete "${python_prefix}/" "${runtime_dir}/"
                 sudo chown -R "${SERVICE_USER}:${SERVICE_USER}" "${runtime_dir}"
                 
+                # Patch ELF RPATH/RUNPATH using patchelf if available
+                if command -v patchelf >/dev/null 2>&1; then
+                    info "Patching Python runtime ELF binaries to use local library path..."
+                    sudo find "${runtime_dir}" -type f -executable -o -name "*.so*" 2>/dev/null | while read -r f; do
+                        sudo patchelf --set-rpath "${runtime_dir}/lib" "$f" 2>/dev/null || true
+                    done
+                else
+                    warn "patchelf is not installed. Python binaries could not be RPATH-patched."
+                fi
+
                 # Check for python binary in bin/
                 if [[ -f "${runtime_dir}/bin/python" ]]; then
                     PYTHON="${runtime_dir}/bin/python"
@@ -339,12 +350,32 @@ if [[ -d "${VENV_DIR}" ]]; then
 fi
 
 if $IS_PI; then
+    # Set LD_LIBRARY_PATH in current shell in case we invoke python during setup (e.g. YOLO download)
+    if [[ -d "${INSTALL_DIR}/python-runtime" ]]; then
+        export LD_LIBRARY_PATH="${INSTALL_DIR}/python-runtime/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+    fi
+
     sudo -u "${SERVICE_USER}" bash -c "
         set -euo pipefail
+        if [[ -d '${INSTALL_DIR}/python-runtime' ]]; then
+            export LD_LIBRARY_PATH='${INSTALL_DIR}/python-runtime/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}'
+        fi
         '${PYTHON}' -m venv '${VENV_DIR}' --system-site-packages
         '${VENV_DIR}/bin/pip' install --upgrade pip wheel setuptools
         '${VENV_DIR}/bin/pip' install --no-cache-dir -r '${INSTALL_DIR}/requirements.txt'
     "
+
+    # Inject LD_LIBRARY_PATH to virtual environment activation script
+    if [[ -d "${INSTALL_DIR}/python-runtime" && -f "${VENV_DIR}/bin/activate" ]]; then
+        if ! grep -q "python-runtime/lib" "${VENV_DIR}/bin/activate"; then
+            sudo tee -a "${VENV_DIR}/bin/activate" >/dev/null <<EOF
+
+# Edge AI Navigation - Custom runtime library path
+export LD_LIBRARY_PATH="${INSTALL_DIR}/python-runtime/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}"
+EOF
+            sudo chown "${SERVICE_USER}:${SERVICE_USER}" "${VENV_DIR}/bin/activate"
+        fi
+    fi
 else
     if [[ ! -d "${VENV_DIR}" ]]; then
         ${PYTHON} -m venv "${VENV_DIR}"
@@ -387,6 +418,10 @@ MODEL_DIR="${INSTALL_DIR}/models"
 if [[ ! -f "${MODEL_DIR}/yolov8n.pt" ]]; then
     if $IS_PI; then
         sudo -u "${SERVICE_USER}" bash -c "
+            set -euo pipefail
+            if [[ -d '${INSTALL_DIR}/python-runtime' ]]; then
+                export LD_LIBRARY_PATH='${INSTALL_DIR}/python-runtime/lib\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}'
+            fi
             cd '${INSTALL_DIR}'
             '${VENV_DIR}/bin/python' -c \"from ultralytics import YOLO; YOLO('yolov8n.pt')\"
             mv ~/.config/Ultralytics/yolov8n.pt '${MODEL_DIR}/yolov8n.pt' 2>/dev/null || true
@@ -448,6 +483,14 @@ ENV
     warn "Your API key is: $(grep EDGE_AI_API_KEY "${INSTALL_DIR}/.env" | cut -d= -f2)"
 else
     info ".env already exists - skipping."
+fi
+
+# Ensure LD_LIBRARY_PATH is set in .env for systemd if python-runtime is used
+if [[ -d "${INSTALL_DIR}/python-runtime" && -f "${INSTALL_DIR}/.env" ]]; then
+    if ! grep -q "LD_LIBRARY_PATH=" "${INSTALL_DIR}/.env" 2>/dev/null; then
+        echo "LD_LIBRARY_PATH=${INSTALL_DIR}/python-runtime/lib" | sudo tee -a "${INSTALL_DIR}/.env" > /dev/null
+        info "Added LD_LIBRARY_PATH to ${INSTALL_DIR}/.env"
+    fi
 fi
 
 # ── Firewall recommendations ──────────────────────────────────────────────────
