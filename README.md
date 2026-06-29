@@ -141,7 +141,7 @@ docker-compose logs -f edge-ai-nav
 
 ### Option C - Development Mode (with CPU fallback)
 
-You can configure your local x86 laptop for development and debugging using the setup script:
+Configue x86 laptop for development and debugging using the setup script:
 
 ```bash
 # 1. Run the cross-platform setup script (automatically configures local dev mode)
