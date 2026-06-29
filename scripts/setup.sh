@@ -283,9 +283,65 @@ fi
 # ── Python virtual environment ────────────────────────────────────────────────
 section "Creating Python virtual environment"
 
+# Check if python is runnable by the service user. If not, copy it to the install directory.
+if $IS_PI && [[ -n "${PYTHON}" ]]; then
+    # Resolve the absolute path of the python interpreter
+    resolved_python="$(command -v "${PYTHON}" || true)"
+    if command -v pyenv >/dev/null 2>&1 && pyenv which "${PYTHON}" >/dev/null 2>&1; then
+        resolved_python="$(pyenv which "${PYTHON}")"
+    fi
+
+    if [[ -n "${resolved_python}" ]]; then
+        if ! sudo -u "${SERVICE_USER}" "${resolved_python}" --version >/dev/null 2>&1; then
+            info "Python interpreter ${PYTHON} (${resolved_python}) is not runnable by service user '${SERVICE_USER}'."
+            python_prefix="$("${resolved_python}" -c "import sys; print(sys.prefix)" 2>/dev/null || true)"
+            if [[ -n "${python_prefix}" && -d "${python_prefix}" ]]; then
+                runtime_dir="${INSTALL_DIR}/python-runtime"
+                info "Copying Python runtime from ${python_prefix} to ${runtime_dir}..."
+                sudo mkdir -p "${runtime_dir}"
+                sudo rsync -a --delete "${python_prefix}/" "${runtime_dir}/"
+                sudo chown -R "${SERVICE_USER}:${SERVICE_USER}" "${runtime_dir}"
+                
+                # Check for python binary in bin/
+                if [[ -f "${runtime_dir}/bin/python" ]]; then
+                    PYTHON="${runtime_dir}/bin/python"
+                elif [[ -f "${runtime_dir}/bin/python3" ]]; then
+                    PYTHON="${runtime_dir}/bin/python3"
+                else
+                    # Find any python executable in bin/
+                    found_py="$(find "${runtime_dir}/bin" -maxdepth 1 -name "python3.*" -executable -print -quit || true)"
+                    PYTHON="${found_py:-${runtime_dir}/bin/python}"
+                fi
+                info "Service Python interpreter set to: ${PYTHON}"
+            else
+                error "Cannot access Python prefix for ${resolved_python} to copy it."
+            fi
+        else
+            # Interpreter is runnable as-is, use its absolute path to be safe
+            PYTHON="${resolved_python}"
+        fi
+    fi
+fi
+
+# Recreate virtual environment if Python version mismatch
+if [[ -d "${VENV_DIR}" ]]; then
+    venv_python_ver="$("${VENV_DIR}/bin/python" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "unknown")"
+    target_python_ver="$("${PYTHON}" -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>/dev/null || echo "unknown")"
+    
+    if [[ "${venv_python_ver}" != "${target_python_ver}" ]]; then
+        info "Recreating virtual environment because existing Python version (${venv_python_ver}) doesn't match target (${target_python_ver})"
+        if $IS_PI; then
+            sudo rm -rf "${VENV_DIR}"
+        else
+            rm -rf "${VENV_DIR}"
+        fi
+    fi
+fi
+
 if $IS_PI; then
     sudo -u "${SERVICE_USER}" bash -c "
-        ${PYTHON} -m venv '${VENV_DIR}' --system-site-packages
+        set -euo pipefail
+        '${PYTHON}' -m venv '${VENV_DIR}' --system-site-packages
         '${VENV_DIR}/bin/pip' install --upgrade pip wheel setuptools
         '${VENV_DIR}/bin/pip' install --no-cache-dir -r '${INSTALL_DIR}/requirements.txt'
     "
