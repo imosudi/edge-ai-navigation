@@ -379,6 +379,10 @@ if $IS_PI; then
         export PKG_CONFIG_PATH="${INSTALL_DIR}/python-runtime/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
     fi
 
+    # Create a Pi-compatible requirements file by removing hailo-model-zoo (which requires x86-only compiler)
+    grep -v "hailo-model-zoo" "${INSTALL_DIR}/requirements.txt" > "/tmp/requirements-pi.txt"
+    sudo chown "${SERVICE_USER}:${SERVICE_USER}" "/tmp/requirements-pi.txt"
+
     sudo -u "${SERVICE_USER}" bash -c "
         set -euo pipefail
         if [[ -d '${INSTALL_DIR}/python-runtime' ]]; then
@@ -387,8 +391,9 @@ if $IS_PI; then
         fi
         '${PYTHON}' -m venv '${VENV_DIR}' --system-site-packages
         '${VENV_DIR}/bin/pip' install --upgrade pip wheel setuptools
-        '${VENV_DIR}/bin/pip' install --no-cache-dir -r '${INSTALL_DIR}/requirements.txt'
+        '${VENV_DIR}/bin/pip' install --no-cache-dir -r '/tmp/requirements-pi.txt'
     "
+    rm -f "/tmp/requirements-pi.txt"
 
     # Inject LD_LIBRARY_PATH & PKG_CONFIG_PATH to virtual environment activation script
     if [[ -d "${INSTALL_DIR}/python-runtime" && -f "${VENV_DIR}/bin/activate" ]]; then
