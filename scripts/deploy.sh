@@ -73,8 +73,13 @@ ssh_run "${REMOTE}" bash -s <<REMOTE_SCRIPT
     if [[ -d "${REMOTE_DIR}/python-runtime" ]]; then
         ENV_VARS="LD_LIBRARY_PATH=${REMOTE_DIR}/python-runtime/lib PKG_CONFIG_PATH=${REMOTE_DIR}/python-runtime/lib/pkgconfig"
     fi
-    sudo -u edgeai ${ENV_VARS} "${REMOTE_DIR}/venv/bin/pip" install \
-        --no-cache-dir -q -r requirements.txt
+    # Filter requirements.txt to remove x86 compilation packages
+    TEMP_REQS=\$(mktemp /tmp/requirements-pi.XXXXXX.txt)
+    grep -v "hailo-model-zoo" requirements.txt > "\${TEMP_REQS}"
+    chown edgeai:edgeai "\${TEMP_REQS}" 2>/dev/null || true
+    sudo -u edgeai \${ENV_VARS} "${REMOTE_DIR}/venv/bin/pip" install \
+        --no-cache-dir -q -r "\${TEMP_REQS}"
+    rm -f "\${TEMP_REQS}"
 REMOTE_SCRIPT
 
 # ── Restart service ────────────────────────────────────────────────────────────
